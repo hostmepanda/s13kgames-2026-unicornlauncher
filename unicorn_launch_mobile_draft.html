@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -25,8 +25,8 @@
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="hud"><span>попыток: <b id="tries">0</b></span><span>взмахов: <b id="flaps">0</b>/3</span></div>
-<div id="hint">Держи и тяни вниз-назад для прицела · отпусти для запуска · тапай в полёте для взмаха</div>
+<div id="hud"><span>tries: <b id="tries">0</b></span><span>flaps: <b id="flaps">0</b>/3</span></div>
+<div id="hint">Hold and drag back-down to aim · release to launch · tap in flight to flap</div>
 <script>
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -434,10 +434,10 @@ function drawResultText(){
   ctx.fillStyle = state.won ? '#2a9d4a' : '#c23b5b';
   ctx.font='bold 22px sans-serif';
   ctx.textAlign='center';
-  ctx.fillText(state.won ? 'Долетел! 🌈' : 'Мимо…', W/2, H*0.3);
+  ctx.fillText(state.won ? 'Made it! 🌈' : 'Missed…', W/2, H*0.3);
   ctx.font='13px sans-serif';
   ctx.fillStyle='rgba(40,40,60,0.6)';
-  ctx.fillText('тапни, чтобы попробовать снова', W/2, H*0.3+26);
+  ctx.fillText('tap to try again', W/2, H*0.3+26);
   ctx.textAlign='left';
 }
 
