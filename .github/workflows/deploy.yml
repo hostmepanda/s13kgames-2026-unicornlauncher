@@ -1,0 +1,87 @@
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; let in-flight deploys finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # js13kgames hard limit: 13 KB = 13 * 1024 bytes
+  ZIP_SIZE_LIMIT: 13312
+
+jobs:
+  # Always deploys the playable build to GitHub Pages, regardless of
+  # whether the js13k zip size check below passes.
+  deploy-pages:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare site
+        run: |
+          mkdir -p dist
+          cp unicorn_launch_mobile_draft.html dist/index.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Builds the js13k submission zip and fails if it exceeds the 13 KB
+  # limit. Independent of deploy-pages — a failure here must not block
+  # the Pages deploy above.
+  build-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build zip
+        run: |
+          mkdir -p dist
+          cp unicorn_launch_mobile_draft.html dist/index.html
+          cd dist
+          zip -9 -X ../game.zip index.html
+
+      - name: Check js13k size limit
+        run: |
+          size=$(stat -c%s game.zip)
+          limit=${{ env.ZIP_SIZE_LIMIT }}
+          echo "zip size: $size bytes (limit: $limit bytes)"
+          if [ "$size" -gt "$limit" ]; then
+            echo "::error::game.zip exceeds the js13k 13KB limit: $size bytes (limit $limit bytes)"
+            exit 1
+          fi
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-zip
+          path: game.zip
+
+      - name: Publish zip to release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest-build --yes --cleanup-tag || true
+          gh release create latest-build game.zip \
+            --title "Latest build" \
+            --notes "Auto-built from ${{ github.sha }}" \
+            --target "${{ github.sha }}"

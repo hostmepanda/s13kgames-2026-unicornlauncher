@@ -1,158 +1,190 @@
-# Unicorn Launch — Handoff для Claude Code
+# Unicorn Launch — Handoff for Claude Code
 
-Отдельный проект от Rainbow Elevator. Возможный кандидат на js13kgames
-(тема: **Unicorns and Rainbows**) или как самостоятельная казуальная веб-игра —
-уточнить перед стартом реализации.
+Separate project from Rainbow Elevator. **js13kgames candidate** (theme:
+**Unicorns and Rainbows**), hard 13KB zip limit — every scope decision is
+made with the byte budget in mind.
 
-Жанр: **launch game / hold-to-charge** (референсы: Learn to Fly, Toss the Turtle,
-слингшот-механика из Angry Birds). Мобайл-first, управление тачем.
+Genre: **launch game / hold-to-charge** (references: Learn to Fly, Toss the Turtle,
+slingshot mechanic from Angry Birds). Mobile-first, touch controls.
 
----
-
-## 1. Концепция
-
-Единорог заряжается радугой (аналог "топлива" — визуально хвост копит радужный
-заряд), запускается по параболе к цели (облако), и в полёте можно немного
-скорректировать траекторию взмахами гривы. Промах = единорог разбивается,
-но вместо крови — разлетаются сердечки (мультяшный, немрачный тон).
-
-Без текста/сюжета — весь фидбек через визуал и партиклы, как и в Rainbow Elevator.
+> **Project rule: code, in-code comments, all documentation (handoff,
+> README, etc.), and git commit messages — English only, no exceptions.**
+> This handoff file itself should be in English going forward too.
 
 ---
 
-## 2. Игровой цикл (4 фазы)
+## 1. Concept
 
-### Фаза 1 — Прицеливание (aim)
-- Игрок зажимает и тянет палец от единорога в сторону, противоположную
-  направлению броска (логика рогатки/slingshot: тянешь назад-вниз → летит
-  вперёд-вверх)
-- Пока зажато — растёт индикатор силы (radial/линейная полоска, сейчас в
-  прототипе — линейная полоска снизу экрана с радужным градиентом-заливкой)
-- Угол броска ограничен разумным диапазоном (в прототипе: от -0.92π до -0.08π,
-  т.е. почти вертикально вверх до почти горизонтально вперёд, не назад/вниз)
-- Слишком короткий жест (< 8% от макс. радиуса) — прицеливание отменяется,
-  ничего не происходит
+The unicorn charges up on rainbow power (a "fuel" analog — visually the tail
+builds up a rainbow charge), launches on a parabolic arc toward a target
+(cloud), and its trajectory can be nudged slightly mid-flight via mane flaps.
+A miss = the unicorn crashes, but instead of blood — hearts burst out
+(cartoonish, non-dark tone).
 
-### Фаза 2 — Старт (release)
-- Отпускание пальца конвертирует накопленную силу в начальную скорость:
-  `speed = BASE_SPEED + power * POWER_MULT` (в прототипе: 600 + power*900)
-- Начальная vx/vy расчитываются из угла и скорости
-- Дальше — баллистика: гравитация постоянно тянет вниз (в прототипе G=1400 px/s²)
-
-### Фаза 3 — Полёт (flight, с коррекцией)
-- Игрок может тапать по экрану для "взмаха гривой" — даёт вертикальный импульс
-  вверх (в прототипе `FLAP_IMPULSE = 480`)
-- **Ограниченный запас взмахов — 3 за попытку** (важно для баланса: полный
-  контроль убивает значимость точного старта, полное отсутствие коррекции
-  делает игру чисто рандомной)
-- Камера следует за единорогом по горизонтали (мир скроллится, единорог держится
-  примерно на 30% ширины экрана от левого края)
-- За единорогом тянется радужный след (semi-transparent trail из истории позиций,
-  цвета циклично берутся из ROYGBIV палитры)
-
-### Фаза 4 — Результат (result)
-- **Попадание в цель** (радиус коллизии ~46px под увеличенный размер пони) →
-  успех, партиклы-сердечки вокруг цели, положительный текст-фидбек
-- **Промах** (упал на землю или улетел за пределы разумной зоны) → пони "исчезает",
-  вместо него — взрыв сердечек (10-14 штук, разлёт по случайным углам с
-  гравитацией), негативный текст-фидбек
-- Тап по экрану в этой фазе → сброс и новая попытка (счётчик попыток в HUD растёт)
+No text/story — all feedback is through visuals and particles, same as in
+Rainbow Elevator.
 
 ---
 
-## 3. Визуальный дизайн единорога
+## 2. Game loop (4 phases)
 
-Полностью отрисован примитивами canvas, без спрайтов/изображений:
-- Тело — эллипс
-- Шея — повёрнутый эллипс поменьше
-- Голова — эллипс + отдельная мордочка
-- Ухо — треугольник
-- Рог — треугольник с линейным градиентом (светло-жёлтый → золотой)
-- Глаз — точка
-- Грива — набор цветных линий вдоль шеи (палитра ROYGBIV)
-- Хвост — несколько цветных изогнутых линий (quadraticCurveTo), с лёгкой
-  анимацией покачивания от `sin(time)`
-- Ноги — 4 скруглённых прямоугольника (roundRect) с офсетом по времени для
-  эффекта "галопа" в полёте
+### Phase 1 — Aim
+- The player presses and drags a finger away from the unicorn, in the
+  direction opposite to the throw (slingshot logic: pull back-down → flies
+  forward-up)
+- While held — a power indicator grows (radial/linear bar; currently in the
+  prototype a linear bar at the bottom of the screen with a rainbow gradient
+  fill)
+- Throw angle is clamped to a sane range (in the prototype: -0.92π to -0.08π,
+  i.e. almost straight up to almost horizontal-forward, never backward/down)
+- Too short a gesture (< 8% of max radius) — aiming is cancelled, nothing
+  happens
 
-Масштаб увеличен через `PONY_SCALE` (в прототипе 2.3x от исходного черновика) —
-единорог должен читаться крупным, "главным" объектом на экране, а не мелкой деталью.
+### Phase 2 — Release
+- Releasing the finger converts the accumulated power into launch speed:
+  `speed = BASE_SPEED + power * POWER_MULT` (in the prototype: 600 + power*900)
+- Initial vx/vy are computed from angle and speed
+- From there it's ballistics: gravity constantly pulls down (in the prototype
+  G=1400 px/s²)
+
+### Phase 3 — Flight (with correction)
+- The player can tap the screen for a "mane flap" — gives an upward vertical
+  impulse (in the prototype `FLAP_IMPULSE = 480`)
+- **Limited flap budget — 3 per attempt** (important for balance: full
+  control kills the significance of a precise launch, zero correction makes
+  the game purely random)
+- The camera follows the unicorn horizontally (the world scrolls, the unicorn
+  is held at roughly 30% of screen width from the left edge)
+- A rainbow trail follows the unicorn (semi-transparent trail from position
+  history, colors cycled from the ROYGBIV palette)
+
+### Phase 4 — Result
+- **Hitting the target** (collision radius ~46px to match the enlarged pony
+  size) → success, heart particles around the target, positive text feedback
+- **Miss** (fell to the ground or flew past a reasonable zone) → the pony
+  "vanishes," replaced by a burst of hearts (10-14 of them, scattered at
+  random angles with gravity), negative text feedback
+- Tapping the screen in this phase → reset and a new attempt (attempt counter
+  in the HUD increases)
 
 ---
 
-## 4. Камера и мир
+## 3. Unicorn visual design
 
-- Игра горизонтально скроллящаяся: `camX` — мировой офсет камеры
-- Во время полёта камера плавно (`lerp`, коэффициент ~6*dt) подстраивается так,
-  чтобы единорог оставался на ~30% ширины экрана
-- Земля рисуется с засечками-тиками (диагональные штрихи с шагом 40px),
-  чтобы движение мира считывалось визуально даже на однотонном фоне
-- Цель (облако) размещается в мировых координатах на 0.9-1.8 экрана впереди
-  точки старта — то есть заведомо требует скролла, не помещается в стартовый кадр
-- В фазах aim/result камера не двигается (аим и результат — статичные экраны)
+Fully drawn with canvas primitives, no sprites/images:
+- Body — ellipse
+- Neck — smaller rotated ellipse
+- Head — ellipse + separate muzzle
+- Ear — triangle
+- Horn — triangle with a linear gradient (light yellow → gold)
+- Eye — dot
+- Mane — a set of colored lines along the neck (ROYGBIV palette)
+- Tail — several colored curved lines (quadraticCurveTo), with a light sway
+  animation from `sin(time)`
+- Legs — 4 rounded rectangles (roundRect) with a time offset for a "gallop"
+  effect in flight
+
+Scale is increased via `PONY_SCALE` (2.3x from the original draft in the
+prototype) — the unicorn should read as a large, "main" object on screen, not
+a small detail.
 
 ---
 
-## 5. Технические параметры (из прототипа, отправная точка для тюнинга)
+## 4. Camera and world
 
-| Параметр | Значение | Описание |
+- The game scrolls horizontally: `camX` — the world camera offset
+- During flight the camera smoothly (`lerp`, coefficient ~6*dt) adjusts to
+  keep the unicorn at ~30% of screen width
+- The ground is drawn with tick marks (diagonal strokes every 40px) so world
+  movement reads visually even against a flat background
+- The target (cloud) is placed in world coordinates 0.9-1.8 screens ahead of
+  the start point — i.e. deliberately requires scrolling, doesn't fit in the
+  starting frame
+- In the aim/result phases the camera doesn't move (aim and result are static
+  screens)
+
+---
+
+## 5. Technical parameters (from the prototype, starting point for tuning)
+
+| Parameter | Value | Description |
 |---|---|---|
-| `G` | 1400 px/s² | гравитация |
-| `FLAP_IMPULSE` | 480 | импульс одного взмаха вверх (px/s мгновенно к vy) |
-| `MAX_FLAPS` | 3 | лимит коррекций за попытку |
-| `BASE_SPEED` | 600 | минимальная скорость запуска |
-| `POWER_MULT` | 900 | доп. скорость от полностью набранной силы |
-| `MAXD` (аим) | min(W,H)*0.28 | макс. радиус жеста для 100% силы |
-| Угол броска | -0.92π..-0.08π | клампинг направления запуска |
-| Радиус цели | 46px | под увеличенный масштаб пони |
-| `PONY_SCALE` | 2.3 | множитель размера единорога |
+| `G` | 1400 px/s² | gravity |
+| `FLAP_IMPULSE` | 480 | impulse of one upward flap (instant px/s added to vy) |
+| `MAX_FLAPS` | 3 | correction limit per attempt |
+| `BASE_SPEED` | 600 | minimum launch speed |
+| `POWER_MULT` | 900 | extra speed from fully charged power |
+| `MAXD` (aim) | min(W,H)*0.28 | max gesture radius for 100% power |
+| Throw angle | -0.92π..-0.08π | launch direction clamping |
+| Target radius | 46px | matching the enlarged pony scale |
+| `PONY_SCALE` | 2.3 | unicorn size multiplier |
 
-Все константы — кандидаты на баланс-тюнинг в процессе плейтеста, не финальные числа.
-
----
-
-## 6. Мобильный инпут
-
-- Только Pointer Events (`pointerdown/pointermove/pointerup`), работает и для
-  тача, и для мыши — не завязываться на touch-events отдельно
-- `touch-action: none` на канвасе, чтобы избежать скролла/зума страницы при жестах
-- Viewport meta с `user-scalable=no`
-- Один активный `pointerId` отслеживается за раз (защита от мультитач-конфликтов)
-- Canvas ресайзится по `devicePixelRatio` (капается на 2x для производительности)
-  и по `window.resize`
+All constants are candidates for balance tuning during playtesting, not final
+numbers.
 
 ---
 
-## 7. Тон и стиль (важно сохранить)
+## 6. Mobile input
 
-- **Никакого текста-сюжета**, минимум UI-текста (счётчики, короткий результат-текст)
-- **Промах ≠ насилие** — сердечки вместо крови/обломков, тон остаётся милым
-  даже в моменте "неудачи"
-- Вся эмоция — через партиклы и цвет, не через текст
-
----
-
-## 8. Референс
-
-Рабочий интерактивный прототип на чистом HTML5 canvas + vanilla JS:
-`unicorn_launch_mobile_draft.html` — содержит всю игровую механику
-(аим/старт/полёт/результат), камеру со скроллом, отрисовку единорога,
-партиклы сердечек и радужный след. Использовать как основу, не переписывать
-с нуля — скорее рефакторить/расширять.
+- Pointer Events only (`pointerdown/pointermove/pointerup`), works for both
+  touch and mouse — don't tie logic to touch-events specifically
+- `touch-action: none` on the canvas to avoid page scroll/zoom during gestures
+- Viewport meta with `user-scalable=no`
+- One active `pointerId` tracked at a time (protects against multitouch
+  conflicts)
+- Canvas resizes based on `devicePixelRatio` (capped at 2x for performance)
+  and on `window.resize`
 
 ---
 
-## 9. Открытые вопросы для следующей сессии
+## 7. Tone and style (important to preserve)
 
-- Финальная платформа: js13k (жёсткий лимит 13кб zip) или свободная веб-игра
-  без ограничения по размеру? От этого зависит, можно ли добавлять больше
-  визуальных деталей/звука без экономии байт
-- Прогрессия между попытками: остаётся ли игра "одна цель — бесконечные попытки"
-  (arcade loop) или добавляется мета-прогрессия (апгрейды дальности/силы между
-  запусками, как в Learn to Fly)?
-- Нужны ли препятствия в полёте (тучи, ветер) для реиграбельности, или пока
-  оставляем чистую механику заряд-полёт-цель?
-- Звук: WebAudio-синтез events (заряд, взмах, попадание, разбиение) — нужна
-  звуковая палитра
-- Индикатор силы — оставить линейную полоску снизу, или перенести на сам
-  радужный хвост единорога (визуально более "диегетично", но сложнее считывать)
+- **No story text**, minimal UI text (counters, short result text)
+- **Miss ≠ violence** — hearts instead of blood/wreckage, the tone stays cute
+  even in a "failure" moment
+- All emotion comes through particles and color, not text
+
+---
+
+## 8. Reference
+
+A working interactive prototype in plain HTML5 canvas + vanilla JS:
+`unicorn_launch_mobile_draft.html` — contains the full game mechanic
+(aim/launch/flight/result), the scrolling camera, unicorn rendering, heart
+particles, and the rainbow trail. Use it as a base, don't rewrite from
+scratch — refactor/extend instead.
+
+---
+
+## 9. Resolved questions (session 2026-08-20)
+
+- **Platform**: js13k candidate, not a standalone game. All technical
+  decisions are made with the 13KB zip budget in mind.
+- **Progression**: **levels**, not an infinite arcade loop and not
+  meta-progression with upgrades/currency. Reasoning: from a js13k budget
+  perspective, levels cost almost no extra code — it's a data array (distance
+  to target, obstacle set per level) reusing all the existing
+  aim/flight/result code. Meta-progression would require a separate upgrade
+  UI screen, currency tracking, and persistent save/load — disproportionately
+  expensive in bytes for a jam game. Level advance happens on hitting the
+  target; persistence (localStorage, last cleared level) is optional and can
+  be cut if space runs short.
+- **Obstacles** (clouds/wind): yes, introduced gradually as part of level
+  progression (difficulty ramps as you advance), not as a separate system
+  from the start.
+- **Sound**: yes, but in a later iteration (not in current scope). WebAudio
+  synth events (charge, flap, hit, crash) — when we get to it.
+- **Power indicator**: keeping it as-is — the linear bar at the bottom of the
+  screen with a rainbow gradient. Not moving it onto the tail (added
+  complexity for polish isn't justified right now).
+
+## 10. Open questions for the next session
+
+- Level design: how many levels in the first version, difficulty curve
+  (distance step, when the first obstacles appear)?
+- Level data format: minimal structure (`targetDist`, `obstacles[]`, what
+  else?) and where it lives in the code
+- Do we need progress persistence (localStorage) in the first version, or is
+  clearing all levels in a single session without saving enough?
+- What happens after the last level (loop back to the first, an "end"
+  screen, just repeat)?
