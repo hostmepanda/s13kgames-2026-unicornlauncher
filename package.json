@@ -1,0 +1,13 @@
+{
+  "name": "unicorn-launch",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build/build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "roadroller": "^2.1.0",
+    "terser": "^5.50.0"
+  }
+}

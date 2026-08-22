@@ -1,0 +1,16 @@
+html,body{
+  margin:0; padding:0; overflow:hidden;
+  background:linear-gradient(#7ec8ff,#dff3ff 60%,#eafff0);
+  font-family:sans-serif; touch-action:none;
+  height:100%;
+}
+#c{display:block; width:100vw; height:100vh;}
+#hud{
+  position:fixed; top:0; left:0; right:0; padding:14px 16px;
+  display:flex; justify-content:space-between; color:#2a2a3a;
+  font-size:13px; opacity:.75; pointer-events:none;
+}
+#hint{
+  position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+  color:#2a2a3a; font-size:13px; opacity:.6; text-align:center; pointer-events:none;
+}

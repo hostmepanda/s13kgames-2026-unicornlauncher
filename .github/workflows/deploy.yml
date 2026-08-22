@@ -30,10 +30,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Prepare site
-        run: |
-          mkdir -p dist
-          cp unicorn_launch_mobile_draft.html dist/index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
 
       - uses: actions/configure-pages@v6
 
@@ -52,10 +55,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Build zip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Zip the build
         run: |
-          mkdir -p dist
-          cp unicorn_launch_mobile_draft.html dist/index.html
           cd dist
           zip -9 -X ../game.zip index.html
 
