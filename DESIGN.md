@@ -1,15 +1,15 @@
-# Unicorn Launch — Handoff for Claude Code
+# Unicorn Launch — Design
 
-Separate project from Rainbow Elevator. **js13kgames candidate** (theme:
-**Unicorns and Rainbows**), hard 13KB zip limit — every scope decision is
-made with the byte budget in mind.
+**js13kgames candidate** (theme: **Unicorns and Rainbows**), hard 13KB zip
+limit — every scope decision is made with the byte budget in mind.
 
-Genre: **launch game / hold-to-charge** (references: Learn to Fly, Toss the Turtle,
-slingshot mechanic from Angry Birds). Mobile-first, touch controls.
+Genre: **launch game / hold-to-charge** (references: Learn to Fly, Toss the
+Turtle, slingshot mechanic from Angry Birds). Mobile-first, touch controls.
 
-> **Project rule: code, in-code comments, all documentation (handoff,
-> README, etc.), and git commit messages — English only, no exceptions.**
-> This handoff file itself should be in English going forward too.
+> **Project rule: code, in-code comments, all documentation, and git commit
+> messages — English only, no exceptions.**
+
+For repo structure and the build pipeline, see [README.md](README.md).
 
 ---
 
@@ -32,24 +32,22 @@ Rainbow Elevator.
 - The player presses and drags a finger away from the unicorn, in the
   direction opposite to the throw (slingshot logic: pull back-down → flies
   forward-up)
-- While held — a power indicator grows (radial/linear bar; currently in the
-  prototype a linear bar at the bottom of the screen with a rainbow gradient
-  fill)
-- Throw angle is clamped to a sane range (in the prototype: -0.92π to -0.08π,
-  i.e. almost straight up to almost horizontal-forward, never backward/down)
+- While held — a power indicator grows (a linear bar at the bottom of the
+  screen with a rainbow gradient fill)
+- Throw angle is clamped to a sane range (-0.92π to -0.08π, i.e. almost
+  straight up to almost horizontal-forward, never backward/down)
 - Too short a gesture (< 8% of max radius) — aiming is cancelled, nothing
   happens
 
 ### Phase 2 — Release
 - Releasing the finger converts the accumulated power into launch speed:
-  `speed = BASE_SPEED + power * POWER_MULT` (in the prototype: 600 + power*900)
+  `speed = BASE_SPEED + power * POWER_MULT` (600 + power*900)
 - Initial vx/vy are computed from angle and speed
-- From there it's ballistics: gravity constantly pulls down (in the prototype
-  G=1400 px/s²)
+- From there it's ballistics: gravity constantly pulls down (G=1400 px/s²)
 
 ### Phase 3 — Flight (with correction)
 - The player can tap the screen for a "mane flap" — gives an upward vertical
-  impulse (in the prototype `FLAP_IMPULSE = 480`)
+  impulse (`FLAP_IMPULSE = 480`)
 - **Limited flap budget — 3 per attempt** (important for balance: full
   control kills the significance of a precise launch, zero correction makes
   the game purely random)
@@ -84,28 +82,26 @@ Fully drawn with canvas primitives, no sprites/images:
 - Legs — 4 rounded rectangles (roundRect) with a time offset for a "gallop"
   effect in flight
 
-Scale is increased via `PONY_SCALE` (2.3x from the original draft in the
-prototype) — the unicorn should read as a large, "main" object on screen, not
-a small detail.
+Scale is increased via `PONY_SCALE` (2.3x from the original hand-drawn size)
+— the unicorn should read as a large, "main" object on screen, not a small
+detail.
 
 ---
 
 ## 4. Camera and world
 
-- The game scrolls horizontally: `camX` — the world camera offset
+- The game scrolls horizontally: `camX` is the world camera offset
 - During flight the camera smoothly (`lerp`, coefficient ~6*dt) adjusts to
   keep the unicorn at ~30% of screen width
-- The ground is drawn with tick marks (diagonal strokes every 40px) so world
-  movement reads visually even against a flat background
 - The target (cloud) is placed in world coordinates 0.9-1.8 screens ahead of
-  the start point — i.e. deliberately requires scrolling, doesn't fit in the
+  the start point — deliberately requires scrolling, doesn't fit in the
   starting frame
 - In the aim/result phases the camera doesn't move (aim and result are static
   screens)
 
 ---
 
-## 5. Technical parameters (from the prototype, starting point for tuning)
+## 5. Tuning parameters
 
 | Parameter | Value | Description |
 |---|---|---|
@@ -120,24 +116,12 @@ a small detail.
 | `PONY_SCALE` | 2.3 | unicorn size multiplier |
 
 All constants are candidates for balance tuning during playtesting, not final
-numbers.
+numbers. Source of truth is `src/main.js`; this table is a quick-reference
+for design discussions, keep it in sync when values change.
 
 ---
 
-## 6. Mobile input
-
-- Pointer Events only (`pointerdown/pointermove/pointerup`), works for both
-  touch and mouse — don't tie logic to touch-events specifically
-- `touch-action: none` on the canvas to avoid page scroll/zoom during gestures
-- Viewport meta with `user-scalable=no`
-- One active `pointerId` tracked at a time (protects against multitouch
-  conflicts)
-- Canvas resizes based on `devicePixelRatio` (capped at 2x for performance)
-  and on `window.resize`
-
----
-
-## 7. Tone and style (important to preserve)
+## 6. Tone and style (important to preserve)
 
 - **No story text**, minimal UI text (counters, short result text)
 - **Miss ≠ violence** — hearts instead of blood/wreckage, the tone stays cute
@@ -146,40 +130,7 @@ numbers.
 
 ---
 
-## 8. Repo structure and build pipeline
-
-The game lives in `src/` as plain HTML5 canvas + vanilla JS (no framework):
-
-- `src/index.html` — HTML shell (head, canvas, HUD markup), with
-  `<!--CSS-->`/`<!--JS-->` placeholders the build script fills in
-- `src/style.css` — HUD/page styles
-- `src/main.js` — the whole game (aim/launch/flight/result, scrolling
-  camera, unicorn rendering, heart particles, rainbow trail)
-
-`build/build.mjs` bundles this into a single `dist/index.html`:
-1. esbuild bundles + minifies `main.js`, terser runs a second aggressive
-   pass on top
-2. esbuild minifies `style.css`
-3. The JS is also packed with Roadroller as an alternative
-4. Both variants (plain-minified vs Roadroller) get assembled into full
-   HTML and zipped; whichever produces the smaller zip wins and becomes
-   `dist/index.html` — this keeps Roadroller from being used when it would
-   actually hurt (it only pays off once the JS is large/repetitive enough
-   that its packing beats plain DEFLATE)
-
-Run `npm install` then `npm run build` locally to produce `dist/index.html`.
-
-CI (`.github/workflows/deploy.yml`) runs this build on every push to
-`main`, in two independent jobs:
-- `deploy-pages` — always deploys `dist/` to GitHub Pages, regardless of
-  the zip size check below
-- `build-zip` — zips `dist/index.html`, fails the job if it exceeds the
-  js13k 13KB limit, and otherwise publishes `game.zip` as a GitHub Release
-  asset (tag `latest-build`)
-
----
-
-## 9. Resolved questions (session 2026-08-20)
+## 7. Resolved decisions (session 2026-08-20)
 
 - **Platform**: js13k candidate, not a standalone game. All technical
   decisions are made with the 13KB zip budget in mind.
@@ -201,7 +152,7 @@ CI (`.github/workflows/deploy.yml`) runs this build on every push to
   screen with a rainbow gradient. Not moving it onto the tail (added
   complexity for polish isn't justified right now).
 
-## 10. Open questions for the next session
+## 8. Open questions for the next session
 
 - Level design: how many levels in the first version, difficulty curve
   (distance step, when the first obstacles appear)?
