@@ -69,22 +69,36 @@ Rainbow Elevator.
 
 ## 3. Unicorn visual design
 
-Fully drawn with canvas primitives, no sprites/images:
-- Body — ellipse
-- Neck — smaller rotated ellipse
-- Head — ellipse + separate muzzle
-- Ear — triangle
-- Horn — triangle with a linear gradient (light yellow → gold)
-- Eye — dot
-- Mane — a set of colored lines along the neck (ROYGBIV palette)
-- Tail — several colored curved lines (quadraticCurveTo), with a light sway
-  animation from `sin(time)`
-- Legs — 4 rounded rectangles (roundRect) with a time offset for a "gallop"
-  effect in flight
+Pixel-art style (`src/pony.js`), not smooth vector shapes: the sprite is a
+small ASCII grid (one character per pixel, region colors only) rendered with
+`fillRect` blocks. A dark outline is auto-generated at render time — any
+filled cell touching an empty neighbor gets an outline pixel stamped behind
+it — so the grid itself only needs to define color regions, not hand-drawn
+edges.
 
-Scale is increased via `PONY_SCALE` (2.3x from the original hand-drawn size)
-— the unicorn should read as a large, "main" object on screen, not a small
-detail.
+Design references: a chibi rainbow-unicorn icon (rounded body, pastel
+shading, gold horn, ROYGBIV mane/tail) combined with a real horse's running
+silhouette (elongated body, distinct neck, 4 legs in a diagonal gallop
+stance rather than 2 stubby legs). Facing **right** (muzzle/horn on the
+right side of the grid) to match the forward flight direction — this also
+fixed an earlier bug where the sprite faced backward relative to travel.
+
+- Head — rounded forehead + a separate elongated snout/muzzle, so it reads
+  as a horse profile rather than a round rodent face; single eye, small
+  pointed ear, nostril pixel
+- Horn — small gold block cluster above the forehead
+- Mane — diagonal rainbow bands (pink→orange→yellow→green→cyan→purple)
+  draped from the top of the head down the back of the neck, continuing
+  directly into the tail (same flowing shape, no separate tail asset)
+- Body — elongated white/light-blue-shaded barrel connecting neck to hips
+- Legs — 4 legs (front pair + back pair), each with a 1px column offset
+  between thigh and shin to suggest a bend, splayed fore/aft for a gallop
+  stance; pink hooves
+- Animation — front leg pair and back leg pair bob in opposite phase
+  (`Math.sin(t*10)`, rounded to whole pixels to stay crisp)
+
+Overall scale is controlled by `PONY_SCALE` in `src/pony.js` — the unicorn
+should read as a large, "main" object on screen, not a small detail.
 
 ---
 
@@ -113,7 +127,7 @@ detail.
 | `MAXD` (aim) | min(W,H)*0.28 | max gesture radius for 100% power |
 | Throw angle | -0.92π..-0.08π | launch direction clamping |
 | Target radius | 46px | matching the enlarged pony scale |
-| `PONY_SCALE` | 2.3 | unicorn size multiplier |
+| `PONY_SCALE` | 2.4 | unicorn size multiplier (in `src/pony.js`) |
 
 All constants are candidates for balance tuning during playtesting, not final
 numbers. Source of truth is `src/main.js`; this table is a quick-reference

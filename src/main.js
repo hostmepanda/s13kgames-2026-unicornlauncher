@@ -1,3 +1,5 @@
+import { drawPony } from './pony.js';
+
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
 let W, H, DPR;
@@ -245,99 +247,6 @@ function drawTrail() {
   ctx.globalAlpha = 1;
 }
 
-const PONY_SCALE = 2.3; // bump up overall size vs original prototype
-
-function drawPony(x, y, rot, t) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(PONY_SCALE, PONY_SCALE);
-  ctx.rotate(rot * 0.28);
-
-  const bob = Math.sin(t * 10) * 0.6; // idle/flight leg wobble
-
-  // ---- tail (flowing rainbow, drawn behind body) ----
-  ctx.save();
-  ctx.translate(15, -2);
-  ctx.rotate(0.5 + Math.sin(t * 6) * 0.15);
-  for (let i = 0; i < stops.length; i++) {
-    ctx.strokeStyle = stops[i];
-    ctx.lineWidth = 3.2;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    const spread = i * 1.4;
-    ctx.moveTo(0, spread * 0.2);
-    ctx.quadraticCurveTo(10 + i * 1.3, 6 + spread, 16 + i * 1.6, -2 + spread * 1.4);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // ---- legs (simple capsules, slight gallop offset) ----
-  ctx.fillStyle = '#e9e0ff';
-  ctx.strokeStyle = '#c9b8f5';
-  ctx.lineWidth = 1;
-  const legY = 10;
-  const legs = [
-    [-12, bob], [-4, -bob], [6, bob * 0.6], [12, -bob * 0.6]
-  ];
-  legs.forEach(([lx, off]) => {
-    roundRect(lx - 2.2, legY, 4.4, 11 + off, 2.2);
-    ctx.fill(); ctx.stroke();
-  });
-
-  // ---- body ----
-  ctx.fillStyle = '#f7f2ff';
-  ctx.strokeStyle = '#d8c9f7';
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 20, 13, 0, 0, Math.PI * 2);
-  ctx.fill(); ctx.stroke();
-
-  // ---- neck ----
-  ctx.beginPath();
-  ctx.ellipse(-18, -9, 9, 11, -0.5, 0, Math.PI * 2);
-  ctx.fill(); ctx.stroke();
-
-  // ---- head ----
-  ctx.beginPath();
-  ctx.ellipse(-27, -17, 10, 7.5, -0.3, 0, Math.PI * 2);
-  ctx.fill(); ctx.stroke();
-  // muzzle
-  ctx.beginPath();
-  ctx.ellipse(-35, -14, 4.5, 3.5, -0.2, 0, Math.PI * 2);
-  ctx.fill(); ctx.stroke();
-
-  // ---- ear ----
-  ctx.beginPath();
-  ctx.moveTo(-22, -24); ctx.lineTo(-19, -31); ctx.lineTo(-16, -24);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-
-  // ---- horn ----
-  const hornGrad = ctx.createLinearGradient(-24, -30, -24, -42);
-  hornGrad.addColorStop(0, '#fff3b0');
-  hornGrad.addColorStop(1, '#ffd23b');
-  ctx.fillStyle = hornGrad;
-  ctx.beginPath();
-  ctx.moveTo(-27, -24); ctx.lineTo(-24, -42); ctx.lineTo(-21, -24);
-  ctx.closePath(); ctx.fill();
-
-  // ---- eye ----
-  ctx.fillStyle = '#2a2a3a';
-  ctx.beginPath(); ctx.arc(-29, -18, 1.4, 0, 7); ctx.fill();
-
-  // ---- mane (rainbow arc along neck) ----
-  stops.forEach((c, i) => {
-    ctx.strokeStyle = c;
-    ctx.lineWidth = 2.6;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-16 + i * 0.4, -19 + i * 1.6);
-    ctx.lineTo(-14 + i * 0.5, -12 + i * 1.9);
-    ctx.stroke();
-  });
-
-  ctx.restore();
-}
-
 function drawHearts() {
   for (const h of state.hearts) {
     const t = h.age / h.life;
@@ -423,7 +332,7 @@ function render(dt) {
   drawTrail();
   drawHearts();
   if (!(state.mode === 'result' && !state.won)) {
-    drawPony(state.pony.x, state.pony.y, state.mode === 'flight' ? state.pony.rot : 0, animT);
+    drawPony(ctx, state.pony.x, state.pony.y, state.mode === 'flight' ? state.pony.rot : 0, animT);
   }
   ctx.restore();
 
