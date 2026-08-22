@@ -27,14 +27,14 @@ const SHAPES = [
   [-4, -1, -2, 1, 'd'],
   [-3, 0, -1, 2, 'd'],
 
-  // wing (big arc over the back, from withers up and over toward the rump,
+  // wing (arc over the back, from withers up and over toward the rump,
   // tapering to a point like a swept feather tip)
-  [8, -6, 10, -3, 'F'],
-  [4, -9, 9, -6, 'F'],
-  [0, -12, 6, -9, 'F'],
-  [-4, -11, 1, -8, 'q'],
-  [-7, -9, -3, -6, 'q'],
-  [-9, -6, -6, -4, 'q'],
+  [8, -6, 10, -4, 'F'],
+  [5, -8, 9, -6, 'F'],
+  [1, -10, 6, -8, 'F'],
+  [-3, -9, 2, -7, 'q'],
+  [-6, -7, -2, -5, 'q'],
+  [-7, -5, -5, -3, 'q'],
 
   // body barrel
   [0, -3, 16, 3, 'w'],
@@ -55,10 +55,8 @@ const SHAPES = [
 
   // horn (curved hook, sweeping up then curling back toward the head)
   [16, -19, 17, -16, 'o'],
-  [17, -22, 18, -19, 'o'],
-  [18, -25, 20, -22, 'g'],
-  [18, -28, 20, -25, 'g'],
-  [16, -30, 18, -27, 'g'],
+  [17, -21, 18, -19, 'o'],
+  [16, -23, 18, -21, 'g'],
 
   // legs: front pair (near the neck)
   [13, 3, 15, 8, 'w', 'F'], [13, 8, 15, 9, 'W', 'F'],
