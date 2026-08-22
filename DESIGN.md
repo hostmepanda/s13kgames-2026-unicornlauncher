@@ -34,6 +34,10 @@ Rainbow Elevator.
   forward-up)
 - While held — a power indicator grows (a linear bar at the bottom of the
   screen with a rainbow gradient fill)
+- Also while held — a rainbow charge pile builds up under the unicorn's
+  tail, growing taller with power (`drawChargePile()` in `src/main.js`,
+  reusing the live drag-vector power calculation rather than `state.power`,
+  which is only set on release)
 - Throw angle is clamped to a sane range (-0.92π to -0.08π, i.e. almost
   straight up to almost horizontal-forward, never backward/down)
 - Too short a gesture (< 8% of max radius) — aiming is cancelled, nothing
@@ -43,6 +47,10 @@ Rainbow Elevator.
 - Releasing the finger converts the accumulated power into launch speed:
   `speed = BASE_SPEED + power * POWER_MULT` (600 + power*900)
 - Initial vx/vy are computed from angle and speed
+- The charge pile scatters into 8-18 rainbow-colored poop particles (count
+  scales with power), reusing the same particle array/physics as the
+  heart bursts (tagged `type:'poop'`, rendered as a 3-blob stack instead of
+  a heart shape)
 - From there it's ballistics: gravity constantly pulls down (G=1400 px/s²)
 
 ### Phase 3 — Flight (with correction)

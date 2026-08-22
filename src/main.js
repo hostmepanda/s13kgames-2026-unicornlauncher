@@ -128,6 +128,20 @@ function launch() {
   state.pony.vy = Math.sin(ang) * SPEED;
   state.mode = 'flight';
   state.aimActive = false;
+
+  // the charge pile scatters into rainbow poops on release
+  const pileX = state.pony.x - 34, pileY = groundY;
+  const n = 8 + Math.round(state.power * 10);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 100 + Math.random() * 220;
+    state.hearts.push({
+      x: pileX, y: pileY,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
+      life: 0.9, age: 0, small: false, type: 'poop',
+      color: stops[i % stops.length],
+    });
+  }
 }
 
 // ---------- update ----------
@@ -311,7 +325,8 @@ function drawHearts() {
     ctx.globalAlpha = 1 - t;
     ctx.translate(h.x, h.y);
     const s = h.small ? 6 : 11;
-    drawHeartShape(s);
+    if (h.type === 'poop') drawPoopShape(s, h.color);
+    else drawHeartShape(s);
     ctx.restore();
   }
 }
@@ -322,6 +337,29 @@ function drawHeartShape(s) {
   ctx.bezierCurveTo(-s, -s * 0.6, -s * 1.6, s * 0.5, 0, s * 1.4);
   ctx.bezierCurveTo(s * 1.6, s * 0.5, s, -s * 0.6, 0, s * 0.3);
   ctx.fill();
+}
+function drawPoopShape(s, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.ellipse(0, s * 0.6, s * 0.9, s * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0, s * 0.7, s * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, -s * 0.55, s * 0.45, s * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+// charge pile: builds up under the tail while aiming, scatters on release
+function drawChargePile() {
+  if (state.mode !== 'aim' || !state.aimActive) return;
+  const dist = Math.min(Math.hypot(state.aimDX, state.aimDY), Math.min(W, H) * 0.28);
+  const pow = dist / (Math.min(W, H) * 0.28);
+  if (pow <= 0) return;
+  const px = state.pony.x - 34, py = groundY;
+  const n = Math.max(1, Math.ceil(pow * 6));
+  for (let i = 0; i < n; i++) {
+    const w = 15 - i * 1.4;
+    ctx.fillStyle = stops[i % stops.length];
+    ctx.beginPath();
+    ctx.ellipse(px, py - i * 6, Math.max(w, 4), 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function drawAimUI() {
@@ -420,6 +458,7 @@ function render(dt) {
   drawTarget();
   drawTrail();
   drawHearts();
+  drawChargePile();
   if (!(state.mode === 'result' && !state.won)) {
     drawPony(ctx, state.pony.x, state.pony.y, state.mode === 'flight' ? state.pony.rot : 0, animT);
   }

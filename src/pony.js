@@ -26,11 +26,12 @@ const COL = {
 // [x0, y0, x1, y1, color, legGroup?] rects in local units, inclusive.
 // legGroup 'F'/'B' rects get a small alternating vertical bob in flight.
 const SHAPES = [
-  // tail (rear/left, zigzag flick, rainbow, drawn behind the body)
-  [-1, -4, 1, -2, 'p'],
-  [-3, -3, -1, -1, 'r'],
-  [-4, -1, -2, 1, 'y'],
-  [-3, 0, -1, 2, 'e'],
+  // tail (rear/left, zigzag flick, rainbow, drawn behind the body) --
+  // thicker than the rest of the mane so it reads as the "source"
+  [-2, -5, 2, -2, 'p'],
+  [-4, -3, 0, 0, 'r'],
+  [-5, -1, -1, 2, 'y'],
+  [-4, 1, 0, 3, 'e'],
 
   // wing (arc over the back, from withers up and over toward the rump,
   // tapering to a rainbow-tipped point)
