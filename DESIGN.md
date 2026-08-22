@@ -201,7 +201,19 @@ Building incrementally, one item at a time, not all at once:
 - [ ] (later, separate pass) Obstacles: headwind birds, wind gusts, a
   volcano eruption — not part of this parallax pass
 
-## 9. Open questions for the next session
+## 9. Minimap
+
+Bottom-right corner HUD panel (`drawMinimap()` in `src/main.js`, screen
+space, drawn every frame alongside the other UI so it's always visible in
+every phase): a rounded rect panel with two dots — pink for the pony, blue
+for the target cloud. World coordinates are mapped into panel space each
+frame from `state.originX`/`state.target.x` (horizontal bounds) and
+`state.target.y`/a fixed high-altitude bound (vertical bounds, generous
+enough to cover a near-vertical launch), clamped to stay inside the panel.
+Since it just re-reads live state every frame, pony motion during flight
+shows up automatically, no separate animation/trail logic needed.
+
+## 10. Open questions for the next session
 
 - Level design: how many levels in the first version, difficulty curve
   (distance step, when the first obstacles appear)?

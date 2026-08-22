@@ -363,6 +363,36 @@ function roundRect(x, y, w, h, r) {
   ctx.closePath();
 }
 
+function drawMinimap() {
+  const mapW = 100, mapH = 60, pad = 10;
+  const mx0 = W - mapW - pad, my0 = H - mapH - pad;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  roundRect(mx0, my0, mapW, mapH, 6); ctx.fill();
+  ctx.strokeStyle = 'rgba(80,60,120,0.4)';
+  ctx.lineWidth = 1.5;
+  roundRect(mx0, my0, mapW, mapH, 6); ctx.stroke();
+
+  const xMin = state.originX - 60;
+  const xMax = state.target.x + 60;
+  const yMin = Math.min(state.target.y, groundY - H * 0.9) - 40;
+  const yMax = groundY + 10;
+  const toMap = (wx, wy) => [
+    mx0 + ((wx - xMin) / (xMax - xMin)) * mapW,
+    my0 + ((wy - yMin) / (yMax - yMin)) * mapH,
+  ];
+
+  const [tx, ty] = toMap(state.target.x, state.target.y);
+  ctx.fillStyle = '#5b8fd6';
+  ctx.beginPath(); ctx.arc(tx, ty, 3, 0, 7); ctx.fill();
+
+  const [px, py] = toMap(state.pony.x, state.pony.y);
+  const cx = Math.max(mx0 + 3, Math.min(mx0 + mapW - 3, px));
+  const cy = Math.max(my0 + 3, Math.min(my0 + mapH - 3, py));
+  ctx.fillStyle = '#ff5b8a';
+  ctx.beginPath(); ctx.arc(cx, cy, 3, 0, 7); ctx.fill();
+}
+
 function drawResultText() {
   if (state.mode !== 'result') return;
   ctx.fillStyle = state.won ? '#2a9d4a' : '#c23b5b';
@@ -395,9 +425,10 @@ function render(dt) {
   }
   ctx.restore();
 
-  // screen-space UI (power bar, arrow, result text)
+  // screen-space UI (power bar, arrow, result text, minimap)
   drawAimUI();
   drawResultText();
+  drawMinimap();
 }
 
 function loop(now) {
