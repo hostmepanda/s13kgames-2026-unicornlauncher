@@ -1,113 +1,75 @@
-// Pixel-art unicorn sprite: a small ASCII grid (region fills only) plus a
-// renderer that auto-generates the dark outline by stamping outline pixels
-// around every filled cell before the fill pass. Facing RIGHT (muzzle/horn
-// on the right side of the grid) to match the forward flight direction.
-export const PONY_PALETTE = {
-  w: '#ffffff', // white body
-  b: '#bfe0ff', // light blue shade
-  g: '#ffd23b', // gold horn, light
-  o: '#f5a623', // gold horn, dark
-  k: '#1a2036', // eye
-  n: '#1a2036', // nostril
-  p: '#ff6fa5', // mane/tail: pink
-  r: '#ff9d3b', // mane/tail: orange
-  y: '#ffe23b', // mane/tail: yellow
-  e: '#4ade80', // mane/tail: green
-  c: '#38bdf8', // mane/tail: cyan
-  u: '#a78bfa', // mane/tail: purple
-  h: '#ff6fa5', // hoof
-};
-const OUTLINE = '#1a2036';
+// Pixel-art horse sprite: a small list of rectangles (region fills,
+// local-unit coordinates) plus a renderer that auto-generates the dark
+// outline by drawing every rect inflated by 1 unit in outline color first,
+// then the real fills on top. Modeled closely on a simple 3-tone pixel
+// horse icon reference, mirrored to face RIGHT (head/muzzle toward
+// positive x) to match the forward flight direction. Unicorn horn / wings
+// / rainbow mane are a later pass on top of this base.
+const OUTLINE = '#0d0d0d';
 
-export const PONY_GRID = [
-  '........................gg.....',
-  '.....................w.ggg.....',
-  '..............pp....ww.oggo....',
-  '.............pprr.....ooo......',
-  '............rrryy..............',
-  '...........ryyyee.........www..',
-  '..........yyeeecc.......wwwwww.',
-  '.........eeccccuu.....wwwkwwww.',
-  '........ccuuuu.......wwwwwwwwwwwww',
-  '.......uuuu..........wwwwwwwwwwwwwwwn',
-  '......pp.............wwwwwwwwww',
-  '.....pp....bwwwwwwwwwwwwwwwwwww',
-  '....ee....bbwwwwwwwwwwwwww.....',
-  '...ee....bbbwwwwwwwwwwwww......',
-  '..cc....bbbbwwwwwwwwwwww.......',
-  '..c....bbbb..wwwwwwwww.........',
-  '.......bb....wwwwwww...........',
-  '.........wwwwwwwwwwwwwwwwwwww',
-  '..........ww..ww......ww..ww',
-  '..........ww..ww......ww..ww',
-  '.........ww....ww....ww....ww',
-  '.........ww....ww....ww....ww',
-  '.........hh....hh....hh....hh',
+const COL = {
+  w: '#c9915c', // tan base
+  W: '#e8c39a', // light cream (highlights, hooves, muzzle tip)
+  d: '#6b6259', // gray-brown (mane, tail, shadow accents)
+  k: '#0d0d0d', // eye
+};
+
+// [x0, y0, x1, y1, color, legGroup?] rects in local units, inclusive.
+// legGroup 'F'/'B' rects get a small alternating vertical bob in flight.
+const SHAPES = [
+  // tail (rear/left, zigzag flick, drawn behind the body)
+  [-1, -4, 1, -2, 'd'],
+  [-3, -3, -1, -1, 'd'],
+  [-4, -1, -2, 1, 'd'],
+  [-3, 0, -1, 2, 'd'],
+
+  // body barrel
+  [0, -3, 16, 3, 'w'],
+  [6, 0, 11, 2, 'W'],
+
+  // neck (rises from the body toward the head)
+  [13, -8, 16, -3, 'w'],
+  [13, -8, 14, -3, 'd'], // mane stripe along the back edge
+
+  // head + tapered muzzle
+  [15, -12, 22, -8, 'w'],
+  [20, -11, 25, -9, 'w'],
+  [24, -10, 27, -9, 'W'],
+  [18, -11, 19, -10, 'k'],
+  [15, -16, 16, -12, 'W'], // ear
+  [14, -13, 15, -12, 'd'], // ear-base shadow
+
+  // legs: front pair (near the neck)
+  [13, 3, 15, 8, 'w', 'F'], [13, 8, 15, 9, 'W', 'F'],
+  [10, 3, 12, 8, 'w', 'F'], [10, 8, 12, 9, 'W', 'F'],
+  // legs: back pair (near the tail)
+  [6, 3, 8, 8, 'w', 'B'], [6, 8, 8, 9, 'W', 'B'],
+  [1, 3, 3, 8, 'w', 'B'], [1, 8, 3, 9, 'W', 'B'],
 ];
 
-// Anchor point (in grid cells) that lands on the pony's world (x,y).
-const ANCHOR_COL = 16;
-const ANCHOR_ROW = 21;
-
-// Leg columns get a small alternating vertical bob for a simple gallop
-// (back pair vs. front pair move in opposite phase).
-const LEG_ROWS = [18, 19, 20, 21, 22];
-const LEFT_LEG_COLS = [9, 16]; // back legs
-const RIGHT_LEG_COLS = [21, 28]; // front legs
-
-const PS = 2; // local pixel unit (pre ctx.scale)
-export const PONY_SCALE = 2.4;
-
-function cellAt(x, y) {
-  if (y < 0 || y >= PONY_GRID.length) return '.';
-  const row = PONY_GRID[y];
-  return x >= 0 && x < row.length ? row[x] : '.';
-}
-
-function legBob(x, y, t) {
-  if (!LEG_ROWS.includes(y)) return 0;
-  if (x >= LEFT_LEG_COLS[0] && x <= LEFT_LEG_COLS[1]) return Math.round(Math.sin(t * 10) * 1);
-  if (x >= RIGHT_LEG_COLS[0] && x <= RIGHT_LEG_COLS[1]) return Math.round(Math.sin(t * 10 + Math.PI) * 1);
-  return 0;
-}
+const CELL = 2; // local unit -> pre-scale px
+const GROUND_Y = 9; // shift shapes up so hoof-bottom (y=9) sits near y=0
+export const PONY_SCALE = 1.9;
 
 export function drawPony(ctx, x, y, rot, t) {
-  const h = PONY_GRID.length;
-  const w = Math.max(...PONY_GRID.map(r => r.length));
+  const bobF = Math.round(Math.sin(t * 10) * 1) * CELL;
+  const bobB = Math.round(Math.sin(t * 10 + Math.PI) * 1) * CELL;
+  const bobOf = group => (group === 'F' ? bobF : group === 'B' ? bobB : 0);
 
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(PONY_SCALE, PONY_SCALE);
   ctx.rotate(rot * 0.28);
 
-  // outline pass: any filled cell with an empty neighbor gets an outline pixel
   ctx.fillStyle = OUTLINE;
-  for (let gy = 0; gy < h; gy++) {
-    for (let gx = 0; gx < w; gx++) {
-      if (cellAt(gx, gy) === '.') continue;
-      const bob = legBob(gx, gy, t);
-      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
-        if (cellAt(gx + dx, gy + dy) === '.') {
-          const px = (gx + dx - ANCHOR_COL) * PS;
-          const py = (gy + dy - ANCHOR_ROW) * PS + bob * PS;
-          ctx.fillRect(px, py, PS, PS);
-        }
-      }
-    }
+  for (const [x0, y0, x1, y1, , group] of SHAPES) {
+    const by = bobOf(group);
+    ctx.fillRect((x0 - 1) * CELL, (y0 - 1 - GROUND_Y) * CELL + by, (x1 - x0 + 3) * CELL, (y1 - y0 + 3) * CELL);
   }
-
-  // fill pass
-  for (let gy = 0; gy < h; gy++) {
-    for (let gx = 0; gx < w; gx++) {
-      const ch = cellAt(gx, gy);
-      const color = PONY_PALETTE[ch];
-      if (!color) continue;
-      const bob = legBob(gx, gy, t);
-      const px = (gx - ANCHOR_COL) * PS;
-      const py = (gy - ANCHOR_ROW) * PS + bob * PS;
-      ctx.fillStyle = color;
-      ctx.fillRect(px, py, PS, PS);
-    }
+  for (const [x0, y0, x1, y1, color, group] of SHAPES) {
+    const by = bobOf(group);
+    ctx.fillStyle = COL[color];
+    ctx.fillRect(x0 * CELL, (y0 - GROUND_Y) * CELL + by, (x1 - x0 + 1) * CELL, (y1 - y0 + 1) * CELL);
   }
 
   ctx.restore();
