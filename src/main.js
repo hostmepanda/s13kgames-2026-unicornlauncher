@@ -231,6 +231,39 @@ function drawMountains() {
   }
 }
 
+// Trees: a front parallax layer (between mountains and the ground), same
+// screen-space-with-its-own-offset trick as drawMountains, but scrolling
+// faster since it reads as closer to the camera.
+const TREE_PARALLAX = 0.6;
+const TREE_SPACING = 70;
+const TREE_COLORS = ['#4f9a3a', '#3f8a2f'];
+
+function drawTree(x, baseY, h, color) {
+  const trunkW = 6, trunkH = 14;
+  ctx.fillStyle = '#6b4a2f';
+  ctx.fillRect(x - trunkW / 2, baseY - trunkH, trunkW, trunkH);
+
+  const layers = 3;
+  ctx.fillStyle = color;
+  for (let i = 0; i < layers; i++) {
+    const w = (layers - i) * 16;
+    const lh = h / layers;
+    ctx.fillRect(x - w / 2, baseY - trunkH - lh * i - lh + 4, w, lh + 2);
+  }
+}
+
+function drawTrees() {
+  const px = camX * TREE_PARALLAX;
+  const baseY = groundY + 6;
+  const startI = Math.floor((px - W) / TREE_SPACING);
+  const endI = Math.ceil((px + W) / TREE_SPACING);
+  for (let i = startI; i <= endI; i++) {
+    const screenX = i * TREE_SPACING - px;
+    const h = 34 + 14 * Math.abs(Math.sin(i * 7.233));
+    drawTree(screenX, baseY, h, TREE_COLORS[i & 1]);
+  }
+}
+
 function drawGround() {
   ctx.fillStyle = '#bfe8b8';
   ctx.fillRect(camX, groundY, W, H - groundY);
@@ -353,6 +386,7 @@ function render(dt) {
   ctx.clearRect(0, 0, W, H);
 
   drawMountains();
+  drawTrees();
 
   ctx.save();
   ctx.translate(-camX, 0);

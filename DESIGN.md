@@ -190,7 +190,8 @@ Building incrementally, one item at a time, not all at once:
   (behind trees, in front of sky). Drawn in screen space with its own
   `camX * MOUNTAIN_PARALLAX` offset (not inside the world `ctx.translate`),
   so it scrolls slower than true world elements
-- [ ] Parallax layer: trees — faster-scrolling than mountains, front layer
+- [x] Parallax layer: trees — faster-scrolling than mountains
+  (`TREE_PARALLAX = 0.6` vs. `MOUNTAIN_PARALLAX = 0.3`), front layer
   (behind the pony/ground grass, in front of mountains)
 - [ ] (later) Location system: support swapping in a different
   mountains+trees set per location; only building one location's assets now
