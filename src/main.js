@@ -1,4 +1,5 @@
 import { drawPony } from './pony.js';
+import { drawGrass } from './grass.js';
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -207,16 +208,12 @@ function drawGround() {
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(camX, groundY); ctx.lineTo(camX + W, groundY); ctx.stroke();
 
-  // simple ground texture ticks so scrolling motion reads clearly
-  ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-  ctx.lineWidth = 2;
-  const spacing = 40;
+  // grass tufts so scrolling motion reads clearly
+  const spacing = 34;
   const startX = Math.floor(camX / spacing) * spacing;
   for (let gx = startX; gx < camX + W + spacing; gx += spacing) {
-    ctx.beginPath();
-    ctx.moveTo(gx, groundY + 6);
-    ctx.lineTo(gx - 10, groundY + 18);
-    ctx.stroke();
+    const scale = 1.3 + 0.5 * Math.abs(Math.sin(gx * 0.37));
+    drawGrass(ctx, gx, groundY + 2, scale);
   }
 }
 

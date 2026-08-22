@@ -86,24 +86,25 @@ they read as "hamster", "dragon", and "dog" respectively rather than a
 horse — the lesson was to nail a recognizable horse silhouette first, then
 layer fantasy elements on top, rather than design them simultaneously.
 
-- Head — tapered muzzle (narrowing steps toward the nose tip, cream tip
+- Head — tapered muzzle (narrowing steps toward the nose tip, light-blue tip
   highlight, softened vs. the original single hard step), single eye, small
-  ear, gray shadow patch at the ear base
+  ear, light-blue shadow patch at the ear base
 - Horn — curved hook shape (a few offset segments sweeping up then curling
   back toward the head), two-tone gold
 - Wing — a tapered arc over the back, from the withers up and over toward
-  the rump, white with a light blue-gray shade on the trailing half
-- Neck — rises from the body to the head, gray mane stripe along its back
-  edge
-- Body — wide tan barrel with a lighter cream belly patch
-- Tail — small gray zigzag flick at the rear, drawn behind the body
-- Legs — 4 straight legs (front pair + back pair) with cream hoof tips
+  the rump, white base with a rainbow-colored tip (cyan→purple→pink)
+- Neck — rises from the body to the head, two-tone rainbow mane stripe
+  along its back edge
+- Body — white barrel with a light-blue belly patch
+- Tail — small rainbow zigzag flick (pink→orange→yellow→green) at the
+  rear, drawn behind the body
+- Legs — 4 straight legs (front pair + back pair) with pink hoof tips
 - Animation — front leg pair and back leg pair bob in opposite phase during
   flight (`Math.sin(t*10)`, rounded to whole pixels to stay crisp)
 
-Rainbow mane/tail (matching the original "Unicorns and Rainbows" concept)
-is still an open item — the mane/tail are currently gray-brown, matching
-the base horse reference rather than the ROYGBIV palette from section 7.
+Recolored white + rainbow (mane, tail, wing tip) per the original
+"Unicorns and Rainbows" concept — the base horse reference used tan/gray
+tones, kept only for the horn's gold and the pink hoof/shading accents.
 
 Overall scale is controlled by `PONY_SCALE` in `src/pony.js` — the unicorn
 should read as a large, "main" object on screen, not a small detail.
@@ -120,6 +121,10 @@ should read as a large, "main" object on screen, not a small detail.
   starting frame
 - In the aim/result phases the camera doesn't move (aim and result are static
   screens)
+- The ground is lined with pixel-art grass tufts (`src/grass.js`, same
+  rect-list + auto-outline technique as the pony), spaced ~34 world px
+  apart with a per-tuft scale jitter so the scroll reads clearly instead of
+  a flat fill
 
 ---
 
@@ -176,8 +181,6 @@ for design discussions, keep it in sync when values change.
 
 ## 8. Open questions for the next session
 
-- Rainbow-ify the mane/tail on the pony sprite (`src/pony.js`) — currently
-  gray-brown to match the base horse reference; horn and wing are done
 - Level design: how many levels in the first version, difficulty curve
   (distance step, when the first obstacles appear)?
 - Level data format: minimal structure (`targetDist`, `obstacles[]`, what
