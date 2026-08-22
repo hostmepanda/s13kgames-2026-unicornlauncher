@@ -61,8 +61,7 @@ const SHAPES = [
 
   // horn (curved hook, sweeping up then curling back toward the head)
   [16, -19, 17, -16, 'o'],
-  [17, -21, 18, -19, 'o'],
-  [16, -23, 18, -21, 'g'],
+  [16, -20, 18, -19, 'g'],
 
   // legs: front pair (near the neck)
   [13, 3, 15, 8, 'w', 'F'], [13, 8, 15, 9, 'h', 'F'],
