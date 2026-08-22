@@ -201,6 +201,36 @@ function endFlight(won) {
 }
 
 // ---------- draw ----------
+
+// Mountains: a back parallax layer, drawn in screen space using its own
+// camX * MOUNTAIN_PARALLAX offset (not the world ctx.translate other
+// drawing uses), so it scrolls slower than the foreground.
+const MOUNTAIN_PARALLAX = 0.3;
+const MOUNTAIN_SPACING = 180;
+const MOUNTAIN_COLORS = ['#a9b0d6', '#9199c9'];
+
+function drawMountain(x, baseY, h, color) {
+  const layers = 5;
+  ctx.fillStyle = color;
+  for (let i = 0; i < layers; i++) {
+    const w = (layers - i) * 24;
+    const lh = h / layers;
+    ctx.fillRect(x - w / 2, baseY - lh * (i + 1), w, lh + 1);
+  }
+}
+
+function drawMountains() {
+  const px = camX * MOUNTAIN_PARALLAX;
+  const baseY = groundY + 4;
+  const startI = Math.floor((px - W) / MOUNTAIN_SPACING);
+  const endI = Math.ceil((px + W) / MOUNTAIN_SPACING);
+  for (let i = startI; i <= endI; i++) {
+    const screenX = i * MOUNTAIN_SPACING - px;
+    const h = 90 + 40 * Math.abs(Math.sin(i * 12.9898));
+    drawMountain(screenX, baseY, h, MOUNTAIN_COLORS[i & 1]);
+  }
+}
+
 function drawGround() {
   ctx.fillStyle = '#bfe8b8';
   ctx.fillRect(camX, groundY, W, H - groundY);
@@ -321,6 +351,8 @@ let animT = 0;
 function render(dt) {
   animT += dt;
   ctx.clearRect(0, 0, W, H);
+
+  drawMountains();
 
   ctx.save();
   ctx.translate(-camX, 0);

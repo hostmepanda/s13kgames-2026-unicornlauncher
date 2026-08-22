@@ -179,7 +179,25 @@ for design discussions, keep it in sync when values change.
   screen with a rainbow gradient. Not moving it onto the tail (added
   complexity for polish isn't justified right now).
 
-## 8. Open questions for the next session
+## 8. Parallax background checklist (session 2026-08-22, in progress)
+
+Building incrementally, one item at a time, not all at once:
+
+- [ ] Sun — arcs across the sky over elapsed attempt time (not tied to
+  camera/distance scrolled), so a long hang time in flight visibly moves it
+  further than a short one
+- [x] Parallax layer: mountains — slow-scrolling silhouette, back layer
+  (behind trees, in front of sky). Drawn in screen space with its own
+  `camX * MOUNTAIN_PARALLAX` offset (not inside the world `ctx.translate`),
+  so it scrolls slower than true world elements
+- [ ] Parallax layer: trees — faster-scrolling than mountains, front layer
+  (behind the pony/ground grass, in front of mountains)
+- [ ] (later) Location system: support swapping in a different
+  mountains+trees set per location; only building one location's assets now
+- [ ] (later, separate pass) Obstacles: headwind birds, wind gusts, a
+  volcano eruption — not part of this parallax pass
+
+## 9. Open questions for the next session
 
 - Level design: how many levels in the first version, difficulty curve
   (distance step, when the first obstacles appear)?
