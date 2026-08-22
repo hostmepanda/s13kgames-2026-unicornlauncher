@@ -186,13 +186,16 @@ Building incrementally, one item at a time, not all at once:
 - [ ] Sun — arcs across the sky over elapsed attempt time (not tied to
   camera/distance scrolled), so a long hang time in flight visibly moves it
   further than a short one
-- [x] Parallax layer: mountains — slow-scrolling silhouette, back layer
-  (behind trees, in front of sky). Drawn in screen space with its own
-  `camX * MOUNTAIN_PARALLAX` offset (not inside the world `ctx.translate`),
-  so it scrolls slower than true world elements
-- [x] Parallax layer: trees — faster-scrolling than mountains
-  (`TREE_PARALLAX = 0.6` vs. `MOUNTAIN_PARALLAX = 0.3`), front layer
-  (behind the pony/ground grass, in front of mountains)
+- [x] Parallax layer: mountains — now **3 layers** (`MOUNTAIN_LAYERS` in
+  src/main.js), tall, with close parallax factors (0.12/0.20/0.30) so they
+  drift slowly relative to each other; each drawn in screen space with its
+  own `camX * parallax` offset (not inside the world `ctx.translate`)
+- [x] Parallax layer: trees — faster-scrolling than the mountain layers
+  (`TREE_PARALLAX = 0.6`), front layer (behind the pony/ground, in front of
+  mountains)
+- [ ] Grass tufts (`src/grass.js`) — temporarily removed from the ground
+  while tuning the mountain/tree layers; module still exists, just unused
+  in `drawGround()` for now, re-add later
 - [ ] (later) Location system: support swapping in a different
   mountains+trees set per location; only building one location's assets now
 - [ ] (later, separate pass) Obstacles: headwind birds, wind gusts, a

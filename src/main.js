@@ -1,5 +1,4 @@
 import { drawPony } from './pony.js';
-import { drawGrass } from './grass.js';
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -202,32 +201,37 @@ function endFlight(won) {
 
 // ---------- draw ----------
 
-// Mountains: a back parallax layer, drawn in screen space using its own
-// camX * MOUNTAIN_PARALLAX offset (not the world ctx.translate other
-// drawing uses), so it scrolls slower than the foreground.
-const MOUNTAIN_PARALLAX = 0.3;
-const MOUNTAIN_SPACING = 180;
-const MOUNTAIN_COLORS = ['#a9b0d6', '#9199c9'];
+// Mountains: 3 back parallax layers, drawn in screen space using each
+// layer's own camX * parallax offset (not the world ctx.translate other
+// drawing uses). Close parallax factors so the layers drift slowly
+// relative to each other, farthest/haziest drawn first.
+const MOUNTAIN_LAYERS = [
+  { parallax: 0.12, spacing: 260, hBase: 220, hVar: 60, color: '#c3c7e8' },
+  { parallax: 0.20, spacing: 200, hBase: 190, hVar: 60, color: '#a9aede' },
+  { parallax: 0.30, spacing: 160, hBase: 160, hVar: 50, color: '#8f96cf' },
+];
 
 function drawMountain(x, baseY, h, color) {
-  const layers = 5;
+  const layers = 6;
   ctx.fillStyle = color;
   for (let i = 0; i < layers; i++) {
-    const w = (layers - i) * 24;
+    const w = (layers - i) * 22;
     const lh = h / layers;
     ctx.fillRect(x - w / 2, baseY - lh * (i + 1), w, lh + 1);
   }
 }
 
 function drawMountains() {
-  const px = camX * MOUNTAIN_PARALLAX;
   const baseY = groundY + 4;
-  const startI = Math.floor((px - W) / MOUNTAIN_SPACING);
-  const endI = Math.ceil((px + W) / MOUNTAIN_SPACING);
-  for (let i = startI; i <= endI; i++) {
-    const screenX = i * MOUNTAIN_SPACING - px;
-    const h = 90 + 40 * Math.abs(Math.sin(i * 12.9898));
-    drawMountain(screenX, baseY, h, MOUNTAIN_COLORS[i & 1]);
+  for (const layer of MOUNTAIN_LAYERS) {
+    const px = camX * layer.parallax;
+    const startI = Math.floor((px - W) / layer.spacing);
+    const endI = Math.ceil((px + W) / layer.spacing);
+    for (let i = startI; i <= endI; i++) {
+      const screenX = i * layer.spacing - px;
+      const h = layer.hBase + layer.hVar * Math.abs(Math.sin(i * 12.9898 + layer.parallax * 97));
+      drawMountain(screenX, baseY, h, layer.color);
+    }
   }
 }
 
@@ -270,14 +274,6 @@ function drawGround() {
   ctx.strokeStyle = 'rgba(0,0,0,0.08)';
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(camX, groundY); ctx.lineTo(camX + W, groundY); ctx.stroke();
-
-  // grass tufts so scrolling motion reads clearly
-  const spacing = 34;
-  const startX = Math.floor(camX / spacing) * spacing;
-  for (let gx = startX; gx < camX + W + spacing; gx += spacing) {
-    const scale = 1.3 + 0.5 * Math.abs(Math.sin(gx * 0.37));
-    drawGrass(ctx, gx, groundY + 2, scale);
-  }
 }
 
 function drawTarget() {
