@@ -306,15 +306,18 @@ function drawTarget() {
 
 function drawTrail() {
   if (state.trail.length < 2) return;
+  ctx.lineCap = 'round';
   for (let i = 1; i < state.trail.length; i++) {
     const a = state.trail[i - 1], b = state.trail[i];
     const c = stops[i % stops.length];
     ctx.strokeStyle = c;
-    ctx.globalAlpha = 0.15 + 0.55 * (i / state.trail.length);
-    ctx.lineWidth = 5;
+    const tail = i / state.trail.length; // 0 at the old end .. 1 near the pony
+    ctx.globalAlpha = 0.15 + 0.55 * tail;
+    ctx.lineWidth = 6 + 22 * tail; // thick as the body right behind the pony
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
   ctx.globalAlpha = 1;
+  ctx.lineCap = 'butt';
 }
 
 function drawHearts() {

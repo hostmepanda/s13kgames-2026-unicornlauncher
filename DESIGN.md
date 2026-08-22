@@ -62,7 +62,8 @@ Rainbow Elevator.
 - The camera follows the unicorn horizontally (the world scrolls, the unicorn
   is held at roughly 30% of screen width from the left edge)
 - A rainbow trail follows the unicorn (semi-transparent trail from position
-  history, colors cycled from the ROYGBIV palette)
+  history, colors cycled from the ROYGBIV palette), thick as the body right
+  behind the pony and tapering thinner toward the older/faded end
 
 ### Phase 4 — Result
 - **Hitting the target** (collision radius ~46px to match the enlarged pony
