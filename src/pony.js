@@ -12,6 +12,10 @@ const COL = {
   W: '#e8c39a', // light cream (highlights, hooves, muzzle tip)
   d: '#6b6259', // gray-brown (mane, tail, shadow accents)
   k: '#0d0d0d', // eye
+  g: '#ffe066', // horn, light gold (tip)
+  o: '#e8a33d', // horn, dark gold (base)
+  F: '#ffffff', // wing, white
+  q: '#dce8f5', // wing, shade
 };
 
 // [x0, y0, x1, y1, color, legGroup?] rects in local units, inclusive.
@@ -23,6 +27,15 @@ const SHAPES = [
   [-4, -1, -2, 1, 'd'],
   [-3, 0, -1, 2, 'd'],
 
+  // wing (big arc over the back, from withers up and over toward the rump,
+  // tapering to a point like a swept feather tip)
+  [8, -6, 10, -3, 'F'],
+  [4, -9, 9, -6, 'F'],
+  [0, -12, 6, -9, 'F'],
+  [-4, -11, 1, -8, 'q'],
+  [-7, -9, -3, -6, 'q'],
+  [-9, -6, -6, -4, 'q'],
+
   // body barrel
   [0, -3, 16, 3, 'w'],
   [6, 0, 11, 2, 'W'],
@@ -31,13 +44,21 @@ const SHAPES = [
   [13, -8, 16, -3, 'w'],
   [13, -8, 14, -3, 'd'], // mane stripe along the back edge
 
-  // head + tapered muzzle
-  [15, -12, 22, -8, 'w'],
-  [20, -11, 25, -9, 'w'],
-  [24, -10, 27, -9, 'W'],
+  // head + tapered, slightly rounded muzzle
+  [15, -12, 21, -8, 'w'],
+  [19, -11, 24, -9, 'w'],
+  [23, -10, 26, -9, 'w'],
+  [25, -10, 27, -9, 'W'],
   [18, -11, 19, -10, 'k'],
   [15, -16, 16, -12, 'W'], // ear
   [14, -13, 15, -12, 'd'], // ear-base shadow
+
+  // horn (curved hook, sweeping up then curling back toward the head)
+  [16, -19, 17, -16, 'o'],
+  [17, -22, 18, -19, 'o'],
+  [18, -25, 20, -22, 'g'],
+  [18, -28, 20, -25, 'g'],
+  [16, -30, 18, -27, 'g'],
 
   // legs: front pair (near the neck)
   [13, 3, 15, 8, 'w', 'F'], [13, 8, 15, 9, 'W', 'F'],

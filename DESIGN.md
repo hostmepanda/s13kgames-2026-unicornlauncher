@@ -76,20 +76,23 @@ time — every rect is first drawn inflated by 1 unit in outline color, then
 the real fills go on top — so the shape list itself only needs region
 colors, not hand-drawn edges.
 
-**Current status: base horse only, not yet unicorn-ified.** The sprite is a
-close recreation of a simple 3-tone pixel-horse icon reference (tan body,
-gray-brown mane/tail/shadow, cream highlights, black outline), mirrored to
-face **right** (head/muzzle toward positive x) to match the forward flight
-direction. Static straight legs, simple zigzag tail, no horn/wings/rainbow
-yet — that's the next pass on top of this base (see open questions below).
+The sprite is a close recreation of a simple 3-tone pixel-horse icon
+reference (tan body, gray-brown mane/tail/shadow, cream highlights, black
+outline), mirrored to face **right** (head/muzzle toward positive x) to
+match the forward flight direction, with a horn and wing added on top.
 Earlier iterations (chibi-rainbow-icon style, then a tan running pegasus
-with horn+wings) were replaced after feedback that they read as "hamster",
-"dragon", and "dog" respectively rather than a horse — the lesson was to
-nail a recognizable horse silhouette first, then layer fantasy elements on
-top, rather than design them simultaneously.
+with horn+wings, more elaborate) were replaced/reworked after feedback that
+they read as "hamster", "dragon", and "dog" respectively rather than a
+horse — the lesson was to nail a recognizable horse silhouette first, then
+layer fantasy elements on top, rather than design them simultaneously.
 
 - Head — tapered muzzle (narrowing steps toward the nose tip, cream tip
-  highlight), single eye, small ear, gray shadow patch at the ear base
+  highlight, softened vs. the original single hard step), single eye, small
+  ear, gray shadow patch at the ear base
+- Horn — curved hook shape (a few offset segments sweeping up then curling
+  back toward the head), two-tone gold
+- Wing — a tapered arc over the back, from the withers up and over toward
+  the rump, white with a light blue-gray shade on the trailing half
 - Neck — rises from the body to the head, gray mane stripe along its back
   edge
 - Body — wide tan barrel with a lighter cream belly patch
@@ -97,6 +100,10 @@ top, rather than design them simultaneously.
 - Legs — 4 straight legs (front pair + back pair) with cream hoof tips
 - Animation — front leg pair and back leg pair bob in opposite phase during
   flight (`Math.sin(t*10)`, rounded to whole pixels to stay crisp)
+
+Rainbow mane/tail (matching the original "Unicorns and Rainbows" concept)
+is still an open item — the mane/tail are currently gray-brown, matching
+the base horse reference rather than the ROYGBIV palette from section 7.
 
 Overall scale is controlled by `PONY_SCALE` in `src/pony.js` — the unicorn
 should read as a large, "main" object on screen, not a small detail.
@@ -169,9 +176,8 @@ for design discussions, keep it in sync when values change.
 
 ## 8. Open questions for the next session
 
-- Unicorn-ify the base horse sprite (`src/pony.js`): add horn, wings, and a
-  rainbow mane/tail on top of the current base without breaking the
-  now-working horse silhouette
+- Rainbow-ify the mane/tail on the pony sprite (`src/pony.js`) — currently
+  gray-brown to match the base horse reference; horn and wing are done
 - Level design: how many levels in the first version, difficulty curve
   (distance step, when the first obstacles appear)?
 - Level data format: minimal structure (`targetDist`, `obstacles[]`, what
