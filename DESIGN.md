@@ -125,9 +125,17 @@ should read as a large, "main" object on screen, not a small detail.
 - The game scrolls horizontally: `camX` is the world camera offset
 - During flight the camera smoothly (`lerp`, coefficient ~6*dt) adjusts to
   keep the unicorn at ~30% of screen width
-- The target (cloud) is placed in world coordinates 0.9-1.8 screens ahead of
-  the start point — deliberately requires scrolling, doesn't fit in the
-  starting frame
+- The target (cloud) is placed at a **fixed world-px distance**
+  (`TARGET_DIST_MIN`/`MAX` = 500-950px, `TARGET_HEIGHT_MIN`/`MAX` = 50-320px
+  above ground) from the start point, deliberately requiring scrolling.
+  This used to be `W * (0.9-1.8)` (screens-ahead, i.e. scaled by viewport
+  width) which was a bug: flight physics (speed, gravity) are absolute
+  px/s, not viewport-relative, so a wide desktop window placed the target
+  far beyond the achievable range (undershoot) while a narrow mobile one
+  placed it well within trivial reach (easy overshoot). Fixed 2026-08-23;
+  the chosen range sits comfortably inside the simulated max range
+  (~1605px at full power with no flaps, ~2991px with 3 well-timed flaps —
+  see the git history for the simulation used to pick these numbers)
 - In the aim/result phases the camera doesn't move (aim and result are static
   screens)
 - The ground is lined with pixel-art grass tufts (`src/grass.js`, same

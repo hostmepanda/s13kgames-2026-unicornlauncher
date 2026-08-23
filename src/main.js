@@ -54,10 +54,17 @@ function resetLaunch() {
   placeTarget();
 }
 
+// Fixed world-px ranges (not scaled by W/H) so target distance/height is
+// consistent across devices -- flight physics (speed, gravity) are also
+// absolute px/s, so tying target placement to viewport size made the
+// target unreachable on wide desktop windows and trivially overshot on
+// narrow mobile ones.
+const TARGET_DIST_MIN = 500, TARGET_DIST_MAX = 950;
+const TARGET_HEIGHT_MIN = 50, TARGET_HEIGHT_MAX = 320;
+
 function placeTarget() {
-  // target is placed further out in world space now that we scroll
-  state.target.x = state.originX + W * (0.9 + Math.random() * 0.9);
-  state.target.y = groundY - (50 + Math.random() * H * 0.4);
+  state.target.x = state.originX + TARGET_DIST_MIN + Math.random() * (TARGET_DIST_MAX - TARGET_DIST_MIN);
+  state.target.y = groundY - (TARGET_HEIGHT_MIN + Math.random() * (TARGET_HEIGHT_MAX - TARGET_HEIGHT_MIN));
 }
 
 resize();
