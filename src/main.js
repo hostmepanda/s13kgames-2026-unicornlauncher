@@ -1,4 +1,5 @@
 import { drawPony } from './pony.js';
+import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss } from './sound.js';
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -103,6 +104,7 @@ cv.addEventListener('pointerdown', e => {
     state.aimActive = true;
     state.aimStartX = e.clientX; state.aimStartY = e.clientY;
     state.aimDX = 0; state.aimDY = 0;
+    sfxAim();
   } else if (state.mode === 'flight') {
     doFlap();
   } else if (state.mode === 'result') {
@@ -127,6 +129,7 @@ function doFlap() {
   state.flapsLeft--;
   document.getElementById('flaps').textContent = MAX_FLAPS - state.flapsLeft;
   state.pony.vy -= FLAP_IMPULSE;
+  sfxFlap();
   // little heart puff on flap, purely cosmetic
   for (let i = 0; i < 4; i++) {
     state.hearts.push({
@@ -235,6 +238,9 @@ function endFlight(won) {
     }
     document.getElementById('level').textContent = state.level + 1;
     document.getElementById('hits').textContent = state.levelHits;
+    if (state.leveledUp) sfxLevelUp(); else sfxHit();
+  } else {
+    sfxMiss();
   }
   if (!won) {
     // heart burst at crash point

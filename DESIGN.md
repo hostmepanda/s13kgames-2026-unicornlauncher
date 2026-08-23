@@ -207,8 +207,9 @@ for design discussions, keep it in sync when values change.
 - **Obstacles** (clouds/wind): yes, introduced gradually as part of level
   progression (difficulty ramps as you advance), not as a separate system
   from the start.
-- **Sound**: yes, but in a later iteration (not in current scope). WebAudio
-  synth events (charge, flap, hit, crash) — when we get to it.
+- **Sound effects**: done (2026-08-23), see section 12. Background music is
+  a separate, later step (deliberately split so each can be reasoned about
+  and byte-costed on its own).
 - **Power indicator**: keeping it as-is — the linear bar at the bottom of the
   screen with a rainbow gradient. Not moving it onto the tail (added
   complexity for polish isn't justified right now).
@@ -253,6 +254,31 @@ frame from `state.originX`/`state.target.x` (horizontal bounds) and
 enough to cover a near-vertical launch), clamped to stay inside the panel.
 Since it just re-reads live state every frame, pony motion during flight
 shows up automatically, no separate animation/trail logic needed.
+
+## 10. Sound effects (session 2026-08-23)
+
+`src/sound.js` — procedural WebAudio SFX, no samples/files. A single
+`tone(freq, dur, type, vol, freqEnd)` helper creates one oscillator +
+gain-envelope (exponential decay) per call; each named SFX is just a
+couple of `tone()` calls with different parameters:
+
+- `sfxAim()` — pointerdown in aim mode (drag start)
+- `sfxFlap()` — each mane flap in flight
+- `sfxHit()` — target hit (not the level's 3rd)
+- `sfxLevelUp()` — target hit that completes the level (two ascending
+  tones instead of one)
+- `sfxMiss()` — crash
+
+`AudioContext` is created lazily on the first call, always from within a
+user-gesture handler (pointerdown), so it never hits autoplay-policy
+issues. Total cost: ~250 bytes zipped for all 5 sounds — sound effects
+turned out to be one of the cheapest features added so far, in line with
+the pre-implementation estimate in the "how much can we spend on
+sound" discussion.
+
+Background music is intentionally a separate follow-up (not started) —
+split out so it can be scoped/costed on its own rather than lumped in with
+SFX.
 
 ## 11. Levels / locations plan (session 2026-08-23)
 
