@@ -67,13 +67,25 @@ export function stopWindSound() {
   wind = null;
 }
 
-// Background music: a tiny looping step sequencer, C major, I-V-vi-IV.
-// Semitone offsets from middle C (0) so notes are computed, not stored as
-// raw frequencies -- cheaper than a full note table.
+// Background music: a looping step sequencer, C major, I-V-vi-IV-IV-I-ii-V
+// (8 chords, twice the earlier 4-chord loop -- longer and more harmonic
+// movement). Semitone offsets from middle C (0) so notes are computed, not
+// stored as raw frequencies -- cheaper than a full note table.
 const NOTE = n => 261.63 * Math.pow(2, n / 12);
 const STEP = 0.15; // seconds per 16th-note step
-const MELODY = [0, null, 4, 7, null, 7, 4, null, 2, null, 5, 9, null, 7, 4, null];
-const BASS = [-12, null, null, null, -5, null, null, null, -3, null, null, null, -7, null, null, null];
+const MELODY = [
+  0, 4, 7, null, 7, 11, 12, 9, 9, 12, 11, 9, 5, 9, 12, null,
+  7, 9, 5, null, 0, 4, 7, 12, 2, 5, 9, 7, 7, 11, 9, 7,
+];
+const BASS = [
+  -12, null, -12, null, -5, null, -5, null, -3, null, -3, null, -7, null, -7, null,
+  -7, null, -7, null, -12, null, -12, null, -10, null, -10, null, -5, null, -5, null,
+];
+// Sparse high accents on off-beats for a little shimmer/texture on top.
+const SPARKLE = [
+  null, null, 12, null, null, null, 19, null, null, null, 16, null, null, null, 17, null,
+  null, null, 17, null, null, null, 12, null, null, null, 14, null, null, null, 19, null,
+];
 
 let musicTimer = null, musicStep = 0;
 
@@ -81,7 +93,9 @@ function playMusicStep() {
   const m = MELODY[musicStep % MELODY.length];
   if (m != null) tone(NOTE(m), STEP * 1.4, 'triangle', 0.07);
   const b = BASS[musicStep % BASS.length];
-  if (b != null) tone(NOTE(b), STEP * 5, 'sine', 0.08);
+  if (b != null) tone(NOTE(b), STEP * 3, 'sine', 0.08);
+  const s = SPARKLE[musicStep % SPARKLE.length];
+  if (s != null) tone(NOTE(s), STEP * 1.2, 'sine', 0.04);
   musicStep++;
 }
 

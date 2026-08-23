@@ -282,19 +282,27 @@ for the wind loop — sound effects turned out to be one of the cheapest
 features added so far, in line with the pre-implementation estimate in
 the "how much can we spend on sound" discussion.
 
-**Background music** (done, 2026-08-23, split from SFX as planned): a tiny
-looping step sequencer in the same file. Notes are semitone offsets from
-middle C run through `NOTE(n) = 261.63 * 2^(n/12)` rather than a stored
-frequency table (cheaper). One 16-step pattern, C major, I-V-vi-IV chord
-progression -- `MELODY` (triangle wave) plus a sustained `BASS` line (sine)
-underneath, both built from `tone()`. `playMusicStep()` fires on a
-`setInterval(..., STEP*1000)` (150ms per 16th note); no lookahead
-scheduler, which can drift slightly under heavy load but is fine for a
-casual game and much cheaper in bytes. `startMusic()` is called from the
-same `pointerdown` handler as the other SFX (guarded so it only starts
-once) so it always begins within a user gesture, then loops forever --
-there's no stop/mute control yet. Cost: ~146 bytes zipped, in line with
-the pre-implementation estimate.
+**Background music** (2026-08-23, split from SFX as planned; extended
+2026-08-24 per feedback -- liked the melody, asked for it longer/more
+complex): a looping step sequencer in the same file. Notes are semitone
+offsets from middle C run through `NOTE(n) = 261.63 * 2^(n/12)` rather than
+a stored frequency table (cheaper). One 32-step pattern, C major,
+I-V-vi-IV-IV-I-ii-V (8 chords, doubled from the original 4-chord/16-step
+loop) -- three voices, all built from `tone()`:
+- `MELODY` (triangle) -- more contour/passing tones than the original
+  arpeggio-only version
+- `BASS` (sine) -- root note pulsing twice per chord instead of once
+- `SPARKLE` (sine, quiet) -- sparse high off-beat accents for shimmer
+
+`playMusicStep()` fires on a `setInterval(..., STEP*1000)` (150ms per
+16th note); no lookahead scheduler, which can drift slightly under heavy
+load but is fine for a casual game and much cheaper in bytes.
+`startMusic()` is called from the same `pointerdown` handler as the other
+SFX (guarded so it only starts once) so it always begins within a user
+gesture, then loops forever -- there's no stop/mute control yet. Cost:
+~146 bytes zipped for the original version, +~57 more for the
+longer/3-voice version -- array-driven note data compresses well, so
+"twice as long, 3 voices instead of 2" was still cheap.
 
 ## 11. Levels / locations plan (session 2026-08-23)
 
