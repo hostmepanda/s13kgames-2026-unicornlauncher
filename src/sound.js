@@ -66,3 +66,29 @@ export function stopWindSound() {
   setTimeout(() => w.noise.stop(), 300);
   wind = null;
 }
+
+// Background music: a tiny looping step sequencer, C major, I-V-vi-IV.
+// Semitone offsets from middle C (0) so notes are computed, not stored as
+// raw frequencies -- cheaper than a full note table.
+const NOTE = n => 261.63 * Math.pow(2, n / 12);
+const STEP = 0.15; // seconds per 16th-note step
+const MELODY = [0, null, 4, 7, null, 7, 4, null, 2, null, 5, 9, null, 7, 4, null];
+const BASS = [-12, null, null, null, -5, null, null, null, -3, null, null, null, -7, null, null, null];
+
+let musicTimer = null, musicStep = 0;
+
+function playMusicStep() {
+  const m = MELODY[musicStep % MELODY.length];
+  if (m != null) tone(NOTE(m), STEP * 1.4, 'triangle', 0.07);
+  const b = BASS[musicStep % BASS.length];
+  if (b != null) tone(NOTE(b), STEP * 5, 'sine', 0.08);
+  musicStep++;
+}
+
+export function startMusic() {
+  if (musicTimer) return;
+  audioCtx(); // create/resume within this user gesture
+  musicStep = 0;
+  playMusicStep();
+  musicTimer = setInterval(playMusicStep, STEP * 1000);
+}

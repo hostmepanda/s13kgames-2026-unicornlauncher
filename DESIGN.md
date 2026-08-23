@@ -282,9 +282,19 @@ for the wind loop — sound effects turned out to be one of the cheapest
 features added so far, in line with the pre-implementation estimate in
 the "how much can we spend on sound" discussion.
 
-Background music is intentionally a separate follow-up (not started) —
-split out so it can be scoped/costed on its own rather than lumped in with
-SFX.
+**Background music** (done, 2026-08-23, split from SFX as planned): a tiny
+looping step sequencer in the same file. Notes are semitone offsets from
+middle C run through `NOTE(n) = 261.63 * 2^(n/12)` rather than a stored
+frequency table (cheaper). One 16-step pattern, C major, I-V-vi-IV chord
+progression -- `MELODY` (triangle wave) plus a sustained `BASS` line (sine)
+underneath, both built from `tone()`. `playMusicStep()` fires on a
+`setInterval(..., STEP*1000)` (150ms per 16th note); no lookahead
+scheduler, which can drift slightly under heavy load but is fine for a
+casual game and much cheaper in bytes. `startMusic()` is called from the
+same `pointerdown` handler as the other SFX (guarded so it only starts
+once) so it always begins within a user gesture, then loops forever --
+there's no stop/mute control yet. Cost: ~146 bytes zipped, in line with
+the pre-implementation estimate.
 
 ## 11. Levels / locations plan (session 2026-08-23)
 

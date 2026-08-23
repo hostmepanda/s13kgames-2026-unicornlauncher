@@ -1,5 +1,5 @@
 import { drawPony } from './pony.js';
-import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, startWindSound, updateWindSound, stopWindSound } from './sound.js';
+import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, startWindSound, updateWindSound, stopWindSound, startMusic } from './sound.js';
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -122,6 +122,7 @@ resetLaunch();
 // ---------- input ----------
 let pointerId = null;
 cv.addEventListener('pointerdown', e => {
+  startMusic();
   if (state.mode === 'aim') {
     pointerId = e.pointerId;
     state.aimActive = true;
