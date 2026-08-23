@@ -67,10 +67,13 @@ Rainbow Elevator.
 
 ### Phase 4 — Result
 - **Hitting the target** (collision radius ~46px to match the enlarged pony
-  size) → success, heart particles around the target, positive text feedback
+  size) → success, heart particles around the target, positive text feedback,
+  and the level's hit counter (`level N · hits/3` in the HUD) increments.
+  On the 3rd hit the level advances (`state.level++`, hits reset to 0,
+  result text reads "Level up!" instead of "Made it!")
 - **Miss** (fell to the ground or flew past a reasonable zone) → the pony
   "vanishes," replaced by a burst of hearts (10-14 of them, scattered at
-  random angles with gravity), negative text feedback
+  random angles with gravity), negative text feedback, hit counter unchanged
 - Tapping the screen in this phase → reset and a new attempt (attempt counter
   in the HUD increases)
 
@@ -125,17 +128,25 @@ should read as a large, "main" object on screen, not a small detail.
 - The game scrolls horizontally: `camX` is the world camera offset
 - During flight the camera smoothly (`lerp`, coefficient ~6*dt) adjusts to
   keep the unicorn at ~30% of screen width
-- The target (cloud) is placed at a **fixed world-px distance**
-  (`TARGET_DIST_MIN`/`MAX` = 500-950px, `TARGET_HEIGHT_MIN`/`MAX` = 50-320px
-  above ground) from the start point, deliberately requiring scrolling.
-  This used to be `W * (0.9-1.8)` (screens-ahead, i.e. scaled by viewport
-  width) which was a bug: flight physics (speed, gravity) are absolute
-  px/s, not viewport-relative, so a wide desktop window placed the target
-  far beyond the achievable range (undershoot) while a narrow mobile one
-  placed it well within trivial reach (easy overshoot). Fixed 2026-08-23;
-  the chosen range sits comfortably inside the simulated max range
-  (~1605px at full power with no flaps, ~2991px with 3 well-timed flaps —
-  see the git history for the simulation used to pick these numbers)
+- The target (cloud) is placed by `placeTarget()` in `src/main.js`
+  (updated 2026-08-23), capped at a physics-achievable distance
+  (`TARGET_DIST_ACHIEVABLE_MAX = 1400px`, comfortably under the simulated
+  max range of ~1605px at full power/no flaps, ~2991px with 3 well-timed
+  flaps) so a target is never physically out of reach regardless of
+  viewport. Two placement modes:
+  - **Blind aim** (default, all levels once past the level-1 tutorial):
+    distance is `screenSpan * (1.05-1.4)` where `screenSpan = W -
+    originX` — i.e. always just past the visible screen edge, requiring
+    the player to aim without seeing the target (helped by the minimap).
+    This intentionally scales with viewport (unlike the old flat range,
+    which was a bug — see git history) because "off screen" is inherently
+    a viewport-relative concept, while the achievable-distance cap keeps
+    it from becoming impossible on very wide windows.
+  - **Level-1 tutorial ramp**: the first level's 3 required hits use
+    `screenSpan` fractions of `[0.35-0.5, 0.8-0.95, 1.05-1.2]` (with a
+    lower max height for the first two) — target starts clearly on
+    screen, edges to the border, then just past it, teaching the blind-aim
+    mechanic before the rest of the game relies on it every time
 - In the aim/result phases the camera doesn't move (aim and result are static
   screens)
 - The ground is lined with pixel-art grass tufts (`src/grass.js`, same
@@ -184,9 +195,11 @@ for design discussions, keep it in sync when values change.
   to target, obstacle set per level) reusing all the existing
   aim/flight/result code. Meta-progression would require a separate upgrade
   UI screen, currency tracking, and persistent save/load — disproportionately
-  expensive in bytes for a jam game. Level advance happens on hitting the
-  target; persistence (localStorage, last cleared level) is optional and can
-  be cut if space runs short.
+  expensive in bytes for a jam game. Level advance requires **3 hits per
+  level** (`LEVEL_HITS_REQUIRED` in `src/main.js`), tracked in the HUD and
+  persisting across misses/retries within the level; persistence
+  (localStorage, last cleared level) is optional and can be cut if space
+  runs short.
 - **Obstacles** (clouds/wind): yes, introduced gradually as part of level
   progression (difficulty ramps as you advance), not as a separate system
   from the start.
@@ -267,9 +280,10 @@ headroom (~9200 bytes) even on the pessimistic end of that estimate.
 
 ## 12. Open questions for the next session
 
-- Level data format: minimal structure (`targetDist`, `obstacles[]`, what
-  else?) and where it lives in the code
-- Difficulty curve: exact target distance per level, and whether obstacles
+- Level advance (3 hits, blind aim after level 1) is implemented; still
+  open: per-location target distance/difficulty tuning once locations 2-5
+  actually exist (right now every level past 1 uses the same blind-aim
+  distance formula, location is visual only so far), and whether obstacles
   stack/reappear across later levels or stay one-per-location
 - Do we need progress persistence (localStorage) in the first version, or is
   clearing all levels in a single session without saving enough?

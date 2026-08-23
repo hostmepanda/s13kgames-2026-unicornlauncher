@@ -19,6 +19,8 @@ const FLAP_IMPULSE = 480;
 const MAX_FLAPS = 3;
 const stops = ['#ff3b3b', '#ff9d3b', '#ffe23b', '#3bff6e', '#3bb3ff', '#5b3bff', '#c23bff'];
 
+const LEVEL_HITS_REQUIRED = 3;
+
 const state = {
   mode: 'aim', // aim | flight | result
   originX: 0, originY: 0,
@@ -34,6 +36,9 @@ const state = {
   tries: 0,
   resultTimer: 0,
   won: false,
+  level: 0, // 0-indexed; level 0 gets the on-screen -> blind tutorial ramp
+  levelHits: 0, // successful hits so far in the current level (0..LEVEL_HITS_REQUIRED)
+  leveledUp: false, // this hit was the level's 3rd, level just advanced
 };
 
 let camX = 0; // world-space camera offset (screen_x = world_x - camX)
@@ -54,17 +59,37 @@ function resetLaunch() {
   placeTarget();
 }
 
-// Fixed world-px ranges (not scaled by W/H) so target distance/height is
-// consistent across devices -- flight physics (speed, gravity) are also
-// absolute px/s, so tying target placement to viewport size made the
-// target unreachable on wide desktop windows and trivially overshot on
-// narrow mobile ones.
-const TARGET_DIST_MIN = 500, TARGET_DIST_MAX = 950;
+// Target distance is capped at what's actually reachable (simulated: ~1605px
+// at full power/best angle with no flaps), so a target never asks for more
+// than the physics can deliver, regardless of viewport size.
+const TARGET_DIST_ABS_MIN = 300;
+const TARGET_DIST_ACHIEVABLE_MAX = 1400;
 const TARGET_HEIGHT_MIN = 50, TARGET_HEIGHT_MAX = 320;
 
 function placeTarget() {
-  state.target.x = state.originX + TARGET_DIST_MIN + Math.random() * (TARGET_DIST_MAX - TARGET_DIST_MIN);
-  state.target.y = groundY - (TARGET_HEIGHT_MIN + Math.random() * (TARGET_HEIGHT_MAX - TARGET_HEIGHT_MIN));
+  // visible world-span from the launch point to the right edge of screen
+  const screenSpan = W - state.originX;
+
+  let dist;
+  let heightMax = TARGET_HEIGHT_MAX;
+  if (state.level === 0 && state.levelHits < 3) {
+    // level 1 tutorial ramp: target starts clearly on screen, then edges
+    // off screen over the 3 hits needed to clear the level, teaching the
+    // player that later levels require aiming beyond what's visible.
+    // No ABS_MIN floor here -- short distances are always trivially
+    // reachable, and enforcing it would push tier 0 off screen on narrow
+    // viewports, defeating the point.
+    const tier = state.levelHits; // 0, 1, 2
+    const distFrac = [0.35, 0.8, 1.05][tier] + Math.random() * 0.15;
+    heightMax = [130, 200, TARGET_HEIGHT_MAX][tier];
+    dist = Math.min(TARGET_DIST_ACHIEVABLE_MAX, screenSpan * distFrac);
+  } else {
+    // blind aim: target sits just past the visible screen edge
+    const distFrac = 1.05 + Math.random() * 0.35;
+    dist = Math.min(TARGET_DIST_ACHIEVABLE_MAX, Math.max(TARGET_DIST_ABS_MIN, screenSpan * distFrac));
+  }
+  state.target.x = state.originX + dist;
+  state.target.y = groundY - (TARGET_HEIGHT_MIN + Math.random() * (heightMax - TARGET_HEIGHT_MIN));
 }
 
 resize();
@@ -196,6 +221,17 @@ function endFlight(won) {
   state.mode = 'result';
   state.won = won;
   state.resultTimer = 0;
+  state.leveledUp = false;
+  if (won) {
+    state.levelHits++;
+    if (state.levelHits >= LEVEL_HITS_REQUIRED) {
+      state.level++;
+      state.levelHits = 0;
+      state.leveledUp = true;
+    }
+    document.getElementById('level').textContent = state.level + 1;
+    document.getElementById('hits').textContent = state.levelHits;
+  }
   if (!won) {
     // heart burst at crash point
     for (let i = 0; i < 14; i++) {
@@ -446,7 +482,8 @@ function drawResultText() {
   ctx.fillStyle = state.won ? '#2a9d4a' : '#c23b5b';
   ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(state.won ? 'Made it! 🌈' : 'Missed…', W / 2, H * 0.3);
+  const label = state.leveledUp ? 'Level up! 🌈' : state.won ? 'Made it!' : 'Missed…';
+  ctx.fillText(label, W / 2, H * 0.3);
   ctx.font = '13px sans-serif';
   ctx.fillStyle = 'rgba(40,40,60,0.6)';
   ctx.fillText('tap to try again', W / 2, H * 0.3 + 26);
