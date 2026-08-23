@@ -262,17 +262,50 @@ function endFlight(won) {
 
 // ---------- draw ----------
 
-// Mountains: 3 back parallax layers, drawn in screen space using each
-// layer's own camX * parallax offset (not the world ctx.translate other
-// drawing uses). Close parallax factors so the layers drift slowly
-// relative to each other, farthest/haziest drawn first.
+// One location per level, cycling every LOCATIONS.length levels. Each has
+// a sky gradient, a ground color, and its own pair of parallax layers
+// (drawn in screen space with their own camX * parallax offset -- not the
+// world ctx.translate other drawing uses).
+const LOCATIONS = [
+  { sky: ['#ffe3c2', '#fff6ea'], ground: '#ffe9c7' }, // 0 heavens
+  { sky: ['#7ec8ff', '#dff3ff'], ground: '#bfe8b8' }, // 1 mountains
+  { sky: ['#93a3c9', '#e6dcd2'], ground: '#9a9a9a' }, // 2 city
+  { sky: ['#6fc7ff', '#eafcff'], ground: '#f0d9a0' }, // 3 beach
+  { sky: ['#141833', '#33395c'], ground: '#4a4038' }, // 4 caves
+];
+function currentLocation() { return LOCATIONS[state.level % LOCATIONS.length]; }
+
+function drawSky() {
+  const [top, bottom] = currentLocation().sky;
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, top);
+  g.addColorStop(1, bottom);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+}
+
+// Generic ground-rising parallax layer: tiles shapeFn(screenX, baseY, h, i)
+// every `spacing` world px, offset by camX * parallax so it scrolls at its
+// own rate, with a per-tile height variation.
+function drawLayer(parallax, spacing, hBase, hVar, baseYOffset, shapeFn) {
+  const px = camX * parallax;
+  const baseY = groundY + baseYOffset;
+  const startI = Math.floor((px - W) / spacing);
+  const endI = Math.ceil((px + W) / spacing);
+  for (let i = startI; i <= endI; i++) {
+    const screenX = i * spacing - px;
+    const h = hBase + hVar * Math.abs(Math.sin(i * 12.9898 + parallax * 97));
+    shapeFn(screenX, baseY, h, i);
+  }
+}
+
+// -- location 1: mountains + trees --
 const MOUNTAIN_LAYERS = [
   { parallax: 0.12, spacing: 260, hBase: 220, hVar: 60, color: '#c3c7e8' },
   { parallax: 0.20, spacing: 200, hBase: 190, hVar: 60, color: '#a9aede' },
   { parallax: 0.30, spacing: 160, hBase: 160, hVar: 50, color: '#8f96cf' },
 ];
-
-function drawMountain(x, baseY, h, color) {
+function drawMountainShape(x, baseY, h, color) {
   const layers = 6;
   ctx.fillStyle = color;
   for (let i = 0; i < layers; i++) {
@@ -281,56 +314,114 @@ function drawMountain(x, baseY, h, color) {
     ctx.fillRect(x - w / 2, baseY - lh * (i + 1), w, lh + 1);
   }
 }
-
 function drawMountains() {
-  const baseY = groundY + 4;
   for (const layer of MOUNTAIN_LAYERS) {
-    const px = camX * layer.parallax;
-    const startI = Math.floor((px - W) / layer.spacing);
-    const endI = Math.ceil((px + W) / layer.spacing);
-    for (let i = startI; i <= endI; i++) {
-      const screenX = i * layer.spacing - px;
-      const h = layer.hBase + layer.hVar * Math.abs(Math.sin(i * 12.9898 + layer.parallax * 97));
-      drawMountain(screenX, baseY, h, layer.color);
-    }
+    drawLayer(layer.parallax, layer.spacing, layer.hBase, layer.hVar, 4,
+      (x, baseY, h) => drawMountainShape(x, baseY, h, layer.color));
   }
 }
-
-// Trees: a front parallax layer (between mountains and the ground), same
-// screen-space-with-its-own-offset trick as drawMountains, but scrolling
-// faster since it reads as closer to the camera.
-const TREE_PARALLAX = 0.6;
-const TREE_SPACING = 70;
 const TREE_COLORS = ['#4f9a3a', '#3f8a2f'];
-
-function drawTree(x, baseY, h, color) {
+function drawTreeShape(x, baseY, h, i) {
   const trunkW = 6, trunkH = 14;
   ctx.fillStyle = '#6b4a2f';
   ctx.fillRect(x - trunkW / 2, baseY - trunkH, trunkW, trunkH);
-
   const layers = 3;
-  ctx.fillStyle = color;
-  for (let i = 0; i < layers; i++) {
-    const w = (layers - i) * 16;
+  ctx.fillStyle = TREE_COLORS[i & 1];
+  for (let j = 0; j < layers; j++) {
+    const w = (layers - j) * 16;
     const lh = h / layers;
-    ctx.fillRect(x - w / 2, baseY - trunkH - lh * i - lh + 4, w, lh + 2);
+    ctx.fillRect(x - w / 2, baseY - trunkH - lh * j - lh + 4, w, lh + 2);
   }
 }
+function drawTrees() { drawLayer(0.6, 70, 34, 14, 6, drawTreeShape); }
 
-function drawTrees() {
-  const px = camX * TREE_PARALLAX;
-  const baseY = groundY + 6;
-  const startI = Math.floor((px - W) / TREE_SPACING);
-  const endI = Math.ceil((px + W) / TREE_SPACING);
-  for (let i = startI; i <= endI; i++) {
-    const screenX = i * TREE_SPACING - px;
-    const h = 34 + 14 * Math.abs(Math.sin(i * 7.233));
-    drawTree(screenX, baseY, h, TREE_COLORS[i & 1]);
+// -- location 0: heavens (soft cloud blobs instead of ground scenery) --
+function drawCloudBgShape(x, baseY, h, color) {
+  const r = h * 0.5;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(x, baseY - r, r * 1.3, r * 0.85, 0, 0, Math.PI * 2);
+  ctx.ellipse(x - r * 0.85, baseY - r * 0.6, r * 0.8, r * 0.6, 0, 0, Math.PI * 2);
+  ctx.ellipse(x + r * 0.85, baseY - r * 0.6, r * 0.8, r * 0.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+function drawHeavens() {
+  drawLayer(0.15, 260, 70, 30, -220, (x, baseY, h) => drawCloudBgShape(x, baseY, h, 'rgba(255,255,255,0.85)'));
+  drawLayer(0.32, 170, 46, 20, -90, (x, baseY, h) => drawCloudBgShape(x, baseY, h, 'rgba(255,240,218,0.95)'));
+}
+
+// -- location 2: city (building silhouettes) --
+function drawBuildingShape(x, baseY, h, color) {
+  const w = 30;
+  ctx.fillStyle = color;
+  ctx.fillRect(x - w / 2, baseY - h, w, h);
+  ctx.fillStyle = 'rgba(255,240,200,0.5)';
+  for (let wy = baseY - h + 10; wy < baseY - 8; wy += 16) {
+    ctx.fillRect(x - w / 2 + 6, wy, 4, 6);
+    ctx.fillRect(x + w / 2 - 10, wy, 4, 6);
   }
+}
+function drawCity() {
+  drawLayer(0.18, 90, 140, 90, 4, (x, baseY, h) => drawBuildingShape(x, baseY, h, '#8f97ad'));
+  drawLayer(0.40, 60, 110, 70, 4, (x, baseY, h) => drawBuildingShape(x, baseY, h, '#6d7690'));
+}
+
+// -- location 3: beach (sea swell + palm trees) --
+function drawSwellShape(x, baseY, h, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(x, baseY, 55, h * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+function drawPalmShape(x, baseY, h) {
+  const trunkW = 6;
+  ctx.fillStyle = '#8a6a3a';
+  ctx.fillRect(x - trunkW / 2, baseY - h, trunkW, h);
+  ctx.fillStyle = '#3fae5c';
+  for (const [dx, dy] of [[-14, -4], [14, -4], [0, -10], [-10, -12], [10, -12]]) {
+    ctx.beginPath();
+    ctx.ellipse(x + dx, baseY - h + dy, 14, 6, Math.atan2(dy, dx), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+function drawBeach() {
+  drawLayer(0.2, 140, 34, 8, -18, (x, baseY, h) => drawSwellShape(x, baseY, h, '#8fd8ff'));
+  drawLayer(0.5, 130, 60, 20, 4, (x, baseY, h) => drawPalmShape(x, baseY, h));
+}
+
+// -- location 4: caves (stalactites hanging from the ceiling) --
+function drawStalactiteShape(x, topY, h, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x - 16, topY); ctx.lineTo(x + 16, topY); ctx.lineTo(x, topY + h);
+  ctx.closePath(); ctx.fill();
+}
+function drawCavesCeilingLayer(parallax, spacing, hBase, hVar, color) {
+  const px = camX * parallax;
+  const startI = Math.floor((px - W) / spacing);
+  const endI = Math.ceil((px + W) / spacing);
+  for (let i = startI; i <= endI; i++) {
+    const screenX = i * spacing - px;
+    const h = hBase + hVar * Math.abs(Math.sin(i * 12.9898 + parallax * 97));
+    drawStalactiteShape(screenX, 0, h, color);
+  }
+}
+function drawCaves() {
+  drawCavesCeilingLayer(0.15, 150, 70, 40, '#2b2b33');
+  drawCavesCeilingLayer(0.35, 100, 50, 30, '#3c3c46');
+}
+
+function drawBackgroundLayers() {
+  const idx = state.level % LOCATIONS.length;
+  if (idx === 0) drawHeavens();
+  else if (idx === 1) { drawMountains(); drawTrees(); }
+  else if (idx === 2) drawCity();
+  else if (idx === 3) drawBeach();
+  else drawCaves();
 }
 
 function drawGround() {
-  ctx.fillStyle = '#bfe8b8';
+  ctx.fillStyle = currentLocation().ground;
   ctx.fillRect(camX, groundY, W, H - groundY);
   ctx.strokeStyle = 'rgba(0,0,0,0.08)';
   ctx.lineWidth = 2;
@@ -498,10 +589,8 @@ let animT = 0;
 
 function render(dt) {
   animT += dt;
-  ctx.clearRect(0, 0, W, H);
-
-  drawMountains();
-  drawTrees();
+  drawSky();
+  drawBackgroundLayers();
 
   ctx.save();
   ctx.translate(-camX, 0);

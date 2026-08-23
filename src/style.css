@@ -8,9 +8,11 @@ html,body{
 #hud{
   position:fixed; top:0; left:0; right:0; padding:14px 16px;
   display:flex; justify-content:space-between; color:#2a2a3a;
-  font-size:19px; opacity:.75; pointer-events:none;
+  font-size:19px; pointer-events:none;
 }
+#hud span{background:rgba(255,255,255,.6); padding:2px 8px; border-radius:8px;}
 #hint{
   position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
-  color:#2a2a3a; font-size:13px; opacity:.6; text-align:center; pointer-events:none;
+  color:#2a2a3a; font-size:13px; text-align:center; pointer-events:none;
+  background:rgba(255,255,255,.6); padding:3px 10px; border-radius:8px;
 }

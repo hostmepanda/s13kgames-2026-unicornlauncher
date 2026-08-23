@@ -230,8 +230,14 @@ Building incrementally, one item at a time, not all at once:
 - [ ] Grass tufts (`src/grass.js`) — temporarily removed from the ground
   while tuning the mountain/tree layers; module still exists, just unused
   in `drawGround()` for now, re-add later
-- [ ] (later) Location system: support swapping in a different
-  mountains+trees set per location; only building one location's assets now
+- [x] Location system (2026-08-23): all 5 locations built (`LOCATIONS` in
+  `src/main.js`), cycling by `state.level % LOCATIONS.length`. Each has a
+  sky gradient, a ground color, and its own pair of parallax layers via a
+  shared `drawLayer(parallax, spacing, hBase, hVar, baseYOffset, shapeFn)`
+  helper (mountains/city/beach reuse it; caves' ceiling-hung stalactites
+  anchor from the top of screen instead, so they use their own small loop).
+  Zip cost for all 4 new locations: ~1600 bytes (4331 -> 4908), in line
+  with the section-11 estimate.
 - [ ] (later, separate pass) Obstacles: headwind birds, wind gusts, a
   volcano eruption — not part of this parallax pass, see section 11 for
   which location each one belongs to
@@ -256,11 +262,16 @@ the original easy→hard draft):
 
 | # | Location | Notes | Obstacle introduced |
 |---|---|---|---|
-| 1 | Heavens | clouds/glow instead of ground scenery — now the intro level | none |
-| 2 | Mountains | already built (3-layer parallax + trees) | none |
-| 3 | City | building silhouettes as parallax | headwind birds |
-| 4 | Beach | open coastal | wind gusts (sideways drift in flight) |
-| 5 | Caves | tighter, dimmer, narrower target placement, finale | volcano eruption (lava/underground) |
+| 1 | Heavens | clouds/glow instead of ground scenery — intro level. Background built 2026-08-23 (floating cloud-blob layers, warm gold sky) | none |
+| 2 | Mountains | background built (3-layer parallax + trees) | none |
+| 3 | City | background built 2026-08-23 (building silhouettes, tiny window highlights) | headwind birds |
+| 4 | Beach | background built 2026-08-23 (palm trees, sea swell, sand ground) | wind gusts (sideways drift in flight) |
+| 5 | Caves | background built 2026-08-23 (ceiling stalactites, dark sky, rock ground), finale | volcano eruption (lava/underground) |
+
+All 5 backgrounds are visual-only so far — no per-location target
+difficulty (still just "blind aim past 0.35-0.5" tutorial at level 0, then
+the same off-screen formula everywhere after), and no obstacles yet (those
+are still tracked separately, see section 8).
 
 Obstacle-to-location pairing stays fixed regardless of order (wind=Beach,
 birds=City, volcano=Caves) — only the sequence changed, not which obstacle
