@@ -226,15 +226,22 @@ shows up automatically, no separate animation/trail logic needed.
 ## 11. Levels / locations plan (session 2026-08-23)
 
 **5 levels, each a distinct location** (not an infinite arcade loop, not
-meta-progression — see section 7). Order goes easy → hard:
+meta-progression — see section 7). Order (session 2026-08-23, updated from
+the original easy→hard draft):
 
 | # | Location | Notes | Obstacle introduced |
 |---|---|---|---|
-| 1 | Mountains | already built (3-layer parallax + trees) | none |
-| 2 | Beach | open coastal | wind gusts (sideways drift in flight) |
+| 1 | Heavens | clouds/glow instead of ground scenery — now the intro level | none |
+| 2 | Mountains | already built (3-layer parallax + trees) | none |
 | 3 | City | building silhouettes as parallax | headwind birds |
-| 4 | Caves | tighter, dimmer, narrower target placement | volcano eruption (lava/underground) |
-| 5 | Heavens | clouds/glow instead of ground scenery, finale | combination of the above |
+| 4 | Beach | open coastal | wind gusts (sideways drift in flight) |
+| 5 | Caves | tighter, dimmer, narrower target placement, finale | volcano eruption (lava/underground) |
+
+Obstacle-to-location pairing stays fixed regardless of order (wind=Beach,
+birds=City, volcano=Caves) — only the sequence changed, not which obstacle
+belongs to which location. Heavens and Mountains have no obstacle, so
+difficulty still ramps up over the run even though it's no longer a flat
+none→one→one→one→combo curve.
 
 Not yet decided: exact distance/difficulty curve per level, and whether
 obstacles from earlier levels also reappear (harder) in later ones or each
