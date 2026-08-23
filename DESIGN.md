@@ -208,7 +208,8 @@ Building incrementally, one item at a time, not all at once:
 - [ ] (later) Location system: support swapping in a different
   mountains+trees set per location; only building one location's assets now
 - [ ] (later, separate pass) Obstacles: headwind birds, wind gusts, a
-  volcano eruption — not part of this parallax pass
+  volcano eruption — not part of this parallax pass, see section 11 for
+  which location each one belongs to
 
 ## 9. Minimap
 
@@ -222,12 +223,39 @@ enough to cover a near-vertical launch), clamped to stay inside the panel.
 Since it just re-reads live state every frame, pony motion during flight
 shows up automatically, no separate animation/trail logic needed.
 
-## 10. Open questions for the next session
+## 11. Levels / locations plan (session 2026-08-23)
 
-- Level design: how many levels in the first version, difficulty curve
-  (distance step, when the first obstacles appear)?
+**5 levels, each a distinct location** (not an infinite arcade loop, not
+meta-progression — see section 7). Order goes easy → hard:
+
+| # | Location | Notes | Obstacle introduced |
+|---|---|---|---|
+| 1 | Mountains | already built (3-layer parallax + trees) | none |
+| 2 | Beach | open coastal | wind gusts (sideways drift in flight) |
+| 3 | City | building silhouettes as parallax | headwind birds |
+| 4 | Caves | tighter, dimmer, narrower target placement | volcano eruption (lava/underground) |
+| 5 | Heavens | clouds/glow instead of ground scenery, finale | combination of the above |
+
+Not yet decided: exact distance/difficulty curve per level, and whether
+obstacles from earlier levels also reappear (harder) in later ones or each
+location keeps its own single obstacle type.
+
+**Byte budget check** (measured by building actual past commits, not
+guessed): a simple procedural parallax layer (silhouette tiling, no
+sprites) costs roughly **80-150 bytes zipped** each; a location built from
+2-3 such layers costs **~250-450 bytes**. Stateful obstacles (particle/physics
+systems like the existing heart/poop bursts) cost more, roughly **350-400
+bytes** each based on the charge-pile feature. Rough total for the
+remaining 4 locations + their obstacles: **~3000-5000 bytes**. Current
+build is **4109 bytes zipped** of the 13312 limit, so there's comfortable
+headroom (~9200 bytes) even on the pessimistic end of that estimate.
+
+## 12. Open questions for the next session
+
 - Level data format: minimal structure (`targetDist`, `obstacles[]`, what
   else?) and where it lives in the code
+- Difficulty curve: exact target distance per level, and whether obstacles
+  stack/reappear across later levels or stay one-per-location
 - Do we need progress persistence (localStorage) in the first version, or is
   clearing all levels in a single session without saving enough?
 - What happens after the last level (loop back to the first, an "end"
