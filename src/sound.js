@@ -30,3 +30,39 @@ export function sfxLevelUp() {
   setTimeout(() => tone(784, 0.22, 'sine', 0.22, 1046), 110);
 }
 export function sfxMiss() { tone(300, 0.3, 'sawtooth', 0.15, 90); }
+
+// Continuous wind whoosh for the flight phase: looping filtered noise,
+// filter cutoff tracks speed so faster/steeper launches sound windier.
+let wind = null;
+
+export function startWindSound() {
+  if (wind) return;
+  const a = audioCtx();
+  const buf = a.createBuffer(1, a.sampleRate, a.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const noise = a.createBufferSource();
+  noise.buffer = buf; noise.loop = true;
+  const filter = a.createBiquadFilter();
+  filter.type = 'bandpass'; filter.Q.value = 0.8; filter.frequency.value = 300;
+  const gain = a.createGain();
+  gain.gain.value = 0;
+  noise.connect(filter); filter.connect(gain); gain.connect(a.destination);
+  noise.start();
+  gain.gain.linearRampToValueAtTime(0.05, a.currentTime + 0.15);
+  wind = { noise, filter, gain };
+}
+
+export function updateWindSound(speed) {
+  if (!wind) return;
+  wind.filter.frequency.setTargetAtTime(300 + Math.min(speed, 1500) * 0.5, audioCtx().currentTime, 0.05);
+}
+
+export function stopWindSound() {
+  if (!wind) return;
+  const a = audioCtx();
+  wind.gain.gain.setTargetAtTime(0, a.currentTime, 0.06);
+  const w = wind;
+  setTimeout(() => w.noise.stop(), 300);
+  wind = null;
+}

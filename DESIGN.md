@@ -269,12 +269,18 @@ couple of `tone()` calls with different parameters:
   tones instead of one)
 - `sfxMiss()` — crash
 
+Plus a continuous **wind whoosh** for the flight phase: a looping 1-second
+noise `AudioBuffer` through a bandpass filter, gain ramped in/out
+(`startWindSound()`/`stopWindSound()`) to avoid clicks, filter cutoff
+tracking current speed each frame (`updateWindSound(speed)` called from
+`update()`) so faster/steeper launches sound windier.
+
 `AudioContext` is created lazily on the first call, always from within a
 user-gesture handler (pointerdown), so it never hits autoplay-policy
-issues. Total cost: ~250 bytes zipped for all 5 sounds — sound effects
-turned out to be one of the cheapest features added so far, in line with
-the pre-implementation estimate in the "how much can we spend on
-sound" discussion.
+issues. Total cost: ~250 bytes zipped for the 5 one-shot SFX, ~260 more
+for the wind loop — sound effects turned out to be one of the cheapest
+features added so far, in line with the pre-implementation estimate in
+the "how much can we spend on sound" discussion.
 
 Background music is intentionally a separate follow-up (not started) —
 split out so it can be scoped/costed on its own rather than lumped in with

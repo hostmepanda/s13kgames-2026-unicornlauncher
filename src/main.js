@@ -1,5 +1,5 @@
 import { drawPony } from './pony.js';
-import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss } from './sound.js';
+import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, startWindSound, updateWindSound, stopWindSound } from './sound.js';
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -163,6 +163,7 @@ function launch() {
   state.pony.vy = Math.sin(ang) * SPEED;
   state.mode = 'flight';
   state.aimActive = false;
+  startWindSound();
 
   // the charge pile scatters into rainbow poops on release
   const pileX = state.pony.x - 34, pileY = groundY;
@@ -187,6 +188,7 @@ function update(dt) {
     p.vy += G * dt;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
+    updateWindSound(Math.hypot(p.vx, p.vy));
     p.rot = Math.atan2(p.vy, p.vx);
 
     state.trail.push({ x: p.x, y: p.y });
@@ -229,6 +231,7 @@ function endFlight(won) {
   state.won = won;
   state.resultTimer = 0;
   state.leveledUp = false;
+  stopWindSound();
   if (won) {
     state.levelHits++;
     if (state.levelHits >= LEVEL_HITS_REQUIRED) {
