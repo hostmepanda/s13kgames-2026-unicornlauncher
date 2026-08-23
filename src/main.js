@@ -22,6 +22,20 @@ const stops = ['#ff3b3b', '#ff9d3b', '#ffe23b', '#3bff6e', '#3bb3ff', '#5b3bff',
 
 const LEVEL_HITS_REQUIRED = 3;
 
+// One location per level, cycling every LOCATIONS.length levels. Each has
+// a sky gradient, a ground color, and its own pair of parallax layers
+// (drawn in screen space with their own camX * parallax offset -- not the
+// world ctx.translate other drawing uses). Declared early (not down with
+// the rest of the drawing code) because placeTarget() needs
+// LOCATIONS.length at module-load time, before resetLaunch() runs.
+const LOCATIONS = [
+  { sky: ['#ffe3c2', '#fff6ea'], ground: '#ffe9c7' }, // 0 heavens
+  { sky: ['#7ec8ff', '#dff3ff'], ground: '#bfe8b8' }, // 1 mountains
+  { sky: ['#93a3c9', '#e6dcd2'], ground: '#9a9a9a' }, // 2 city
+  { sky: ['#6fc7ff', '#eafcff'], ground: '#f0d9a0' }, // 3 beach
+  { sky: ['#141833', '#33395c'], ground: '#4a4038' }, // 4 caves
+];
+
 const state = {
   mode: 'aim', // aim | flight | result
   originX: 0, originY: 0,
@@ -40,12 +54,16 @@ const state = {
   level: 0, // 0-indexed; level 0 gets the on-screen -> blind tutorial ramp
   levelHits: 0, // successful hits so far in the current level (0..LEVEL_HITS_REQUIRED)
   leveledUp: false, // this hit was the level's 3rd, level just advanced
+  bgLevel: 0, // location actually shown -- lags state.level until the next
+              // resetLaunch(), so the background only switches when the
+              // player taps to start the next attempt, not mid-result-screen
 };
 
 let camX = 0; // world-space camera offset (screen_x = world_x - camX)
 
 function resetLaunch() {
   state.mode = 'aim';
+  state.bgLevel = state.level;
   state.originX = W * 0.22;
   state.originY = groundY;
   state.aimActive = false;
@@ -70,6 +88,9 @@ const TARGET_HEIGHT_MIN = 50, TARGET_HEIGHT_MAX = 320;
 function placeTarget() {
   // visible world-span from the launch point to the right edge of screen
   const screenSpan = W - state.originX;
+  // every full trip through all 5 locations ramps difficulty further --
+  // targets sit farther past the screen edge and the target itself shrinks
+  const cycle = Math.floor(state.level / LOCATIONS.length);
 
   let dist;
   let heightMax = TARGET_HEIGHT_MAX;
@@ -85,12 +106,14 @@ function placeTarget() {
     heightMax = [130, 200, TARGET_HEIGHT_MAX][tier];
     dist = Math.min(TARGET_DIST_ACHIEVABLE_MAX, screenSpan * distFrac);
   } else {
-    // blind aim: target sits just past the visible screen edge
-    const distFrac = 1.05 + Math.random() * 0.35;
+    // blind aim: target sits just past the visible screen edge, and each
+    // full cycle through all 5 locations pushes it further out
+    const distFrac = 1.05 + Math.random() * 0.35 + cycle * 0.15;
     dist = Math.min(TARGET_DIST_ACHIEVABLE_MAX, Math.max(TARGET_DIST_ABS_MIN, screenSpan * distFrac));
   }
   state.target.x = state.originX + dist;
   state.target.y = groundY - (TARGET_HEIGHT_MIN + Math.random() * (heightMax - TARGET_HEIGHT_MIN));
+  state.target.r = Math.max(30, 46 - cycle * 4);
 }
 
 resize();
@@ -270,19 +293,7 @@ function endFlight(won) {
 }
 
 // ---------- draw ----------
-
-// One location per level, cycling every LOCATIONS.length levels. Each has
-// a sky gradient, a ground color, and its own pair of parallax layers
-// (drawn in screen space with their own camX * parallax offset -- not the
-// world ctx.translate other drawing uses).
-const LOCATIONS = [
-  { sky: ['#ffe3c2', '#fff6ea'], ground: '#ffe9c7' }, // 0 heavens
-  { sky: ['#7ec8ff', '#dff3ff'], ground: '#bfe8b8' }, // 1 mountains
-  { sky: ['#93a3c9', '#e6dcd2'], ground: '#9a9a9a' }, // 2 city
-  { sky: ['#6fc7ff', '#eafcff'], ground: '#f0d9a0' }, // 3 beach
-  { sky: ['#141833', '#33395c'], ground: '#4a4038' }, // 4 caves
-];
-function currentLocation() { return LOCATIONS[state.level % LOCATIONS.length]; }
+function currentLocation() { return LOCATIONS[state.bgLevel % LOCATIONS.length]; }
 
 function drawSky() {
   const [top, bottom] = currentLocation().sky;
@@ -421,7 +432,7 @@ function drawCaves() {
 }
 
 function drawBackgroundLayers() {
-  const idx = state.level % LOCATIONS.length;
+  const idx = state.bgLevel % LOCATIONS.length;
   if (idx === 0) drawHeavens();
   else if (idx === 1) { drawMountains(); drawTrees(); }
   else if (idx === 2) drawCity();

@@ -300,10 +300,27 @@ the original easy→hard draft):
 | 4 | Beach | background built 2026-08-23 (palm trees, sea swell, sand ground) | wind gusts (sideways drift in flight) |
 | 5 | Caves | background built 2026-08-23 (ceiling stalactites, dark sky, rock ground), finale | volcano eruption (lava/underground) |
 
-All 5 backgrounds are visual-only so far — no per-location target
-difficulty (still just "blind aim past 0.35-0.5" tutorial at level 0, then
-the same off-screen formula everywhere after), and no obstacles yet (those
-are still tracked separately, see section 8).
+All 5 backgrounds are visual-only so far — no per-location obstacles yet
+(those are still tracked separately, see section 8).
+
+**Difficulty ramps per full cycle** (2026-08-23): looping back to Heavens
+after Caves isn't a flat repeat. `placeTarget()` computes
+`cycle = Math.floor(state.level / LOCATIONS.length)` and uses it to push
+blind-aim targets farther out (`+ cycle * 0.15` on the distance fraction,
+still capped at `TARGET_DIST_ACHIEVABLE_MAX`) and shrink the target radius
+(`46 - cycle * 4`, floored at 30). The level-1-style tutorial ramp only
+ever applies at `state.level === 0` (the very first time through), not on
+later cycles.
+
+**Background switch timing** (2026-08-23): the location shown while
+playing is `state.bgLevel`, not `state.level` directly. `state.level`
+advances the instant the 3rd hit lands (so the HUD's "level N" updates
+immediately), but `state.bgLevel` only syncs to it inside `resetLaunch()`
+— i.e. when the player taps to start the next attempt. This was a
+deliberate fix: previously the background swapped mid-result-screen, right
+when the hit registered, which read as jarring. Now the just-cleared
+location's scenery stays visible through the "Level up!" result screen,
+and the new location only appears once the next attempt actually starts.
 
 Obstacle-to-location pairing stays fixed regardless of order (wind=Beach,
 birds=City, volcano=Caves) — only the sequence changed, not which obstacle
