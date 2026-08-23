@@ -194,8 +194,12 @@ function update(dt) {
     camX += (desiredCamX - camX) * Math.min(1, dt * 6);
     if (camX < 0) camX = 0;
 
-    // check target hit
-    const dTgt = Math.hypot(p.x - state.target.x, p.y - state.target.y);
+    // check target hit -- p.x/p.y is the sprite's anchor point (roughly the
+    // hooves), but the body/neck/horn extend well above it, so the check
+    // point is offset toward the body's visual center instead of the raw
+    // anchor (otherwise the top of the pony can pass clean through the
+    // target without ever registering a hit)
+    const dTgt = Math.hypot((p.x + 3) - state.target.x, (p.y - 45) - state.target.y);
     if (dTgt < state.target.r) {
       endFlight(true);
     } else if (p.y > groundY + 20 || p.x < -60 || p.x > state.target.x + W) {
