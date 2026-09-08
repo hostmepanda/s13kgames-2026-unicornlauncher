@@ -561,39 +561,60 @@ function drawChargePile() {
   }
 }
 
-// Start-screen illustration: a hand pulling the pony back, plus a dashed
-// arc showing the launch trajectory -- so the slingshot mechanic reads
-// visually, not just from the one-line text hint.
+// Start-screen illustration: a hand pulling a demo pony back, plus a dashed
+// arc showing the launch trajectory into a target cloud -- drawn at a fixed
+// spot right under the intro text (not at the real pony's game position,
+// which sits low/left on screen and read as unrelated background clutter)
+// so the whole thing reads as one connected diagram, with word labels since
+// the arrow-only version still wasn't clear enough per user testing.
 function drawIntroDemo() {
-  const px = state.pony.x, py = state.pony.y - 20;
-  const hx = px - 70, hy = py + 55;
+  const px = W * 0.5, py = H * 0.56;
+  const hx = px - 60, hy = py + 45;
 
-  ctx.strokeStyle = 'rgba(80,60,120,0.55)';
+  ctx.strokeStyle = 'rgba(80,60,120,0.7)';
   ctx.lineWidth = 3;
   ctx.setLineDash([6, 6]);
   ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(hx, hy); ctx.stroke();
 
   ctx.beginPath();
   ctx.moveTo(px, py);
-  ctx.quadraticCurveTo(px + 90, py - 130, px + 190, py - 40);
+  ctx.quadraticCurveTo(px + 80, py - 120, px + 170, py - 40);
   ctx.stroke();
   ctx.setLineDash([]);
 
   // arrowhead at the trajectory's end
-  ctx.fillStyle = 'rgba(80,60,120,0.55)';
+  ctx.fillStyle = 'rgba(80,60,120,0.7)';
   ctx.beginPath();
-  ctx.moveTo(px + 190, py - 40);
-  ctx.lineTo(px + 176, py - 46);
-  ctx.lineTo(px + 182, py - 30);
+  ctx.moveTo(px + 170, py - 40);
+  ctx.lineTo(px + 156, py - 46);
+  ctx.lineTo(px + 162, py - 30);
   ctx.closePath(); ctx.fill();
 
-  // hand: a simple fist + thumb
+  // target cloud at the arrow's tip
+  ctx.beginPath();
+  ctx.arc(px + 178, py - 52, 12, 0, Math.PI * 2);
+  ctx.arc(px + 190, py - 46, 9, 0, Math.PI * 2);
+  ctx.arc(px + 168, py - 44, 9, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.fill();
+
+  // demo pony held at the pull point
+  drawPony(ctx, px, py, -0.5, 0);
+
+  // hand: a simple fist + thumb, pulling from behind
   ctx.fillStyle = '#f0b088';
   ctx.beginPath(); ctx.arc(hx, hy, 16, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(hx + 10, hy - 6, 7, 5, 0.5, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.25)';
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(hx, hy, 16, 0, Math.PI * 2); ctx.stroke();
+
+  // word labels so the mechanic is unmistakable, not just implied by arrows
+  ctx.fillStyle = 'rgba(42,42,58,0.85)';
+  ctx.font = 'bold 15px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('1. pull back', hx, hy + 30);
+  ctx.fillText('2. let go', px + 172, py + 16);
 }
 
 function drawAimUI() {
@@ -692,10 +713,13 @@ function render(dt) {
   drawTrail();
   drawHearts();
   drawChargePile();
-  if (!(state.mode === 'result' && !state.won)) {
+  if (introVisible) {
+    // hide the real (idle, off to the side) pony while the intro's own demo
+    // pony is on screen -- two unicorns at once read as confusing, not helpful
+    drawIntroDemo();
+  } else if (!(state.mode === 'result' && !state.won)) {
     drawPony(ctx, state.pony.x, state.pony.y, state.mode === 'flight' ? state.pony.rot : 0, animT);
   }
-  if (introVisible) drawIntroDemo();
   ctx.restore();
 
   // screen-space UI (power bar, arrow, result text, minimap)

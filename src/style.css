@@ -18,7 +18,8 @@ html,body{
 }
 #intro{
   position:fixed; inset:0; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; text-align:center; gap:8px;
+  align-items:center; justify-content:flex-start; text-align:center; gap:8px;
+  padding-top:16vh;
   color:#2a2a3a; font-size:20px; line-height:1.5;
   background:rgba(255,255,255,.55);
 }

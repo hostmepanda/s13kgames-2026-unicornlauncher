@@ -405,13 +405,26 @@ user's): js13k players don't read, so anything beyond 1-2 lines is wasted
 — the existing `#hint` bar (visible during aim) already covers the rest of
 the controls. Cost: ~182 bytes zipped.
 
-Added a canvas illustration on top of the idle aim scene while the intro is
-up (`drawIntroDemo()` in `src/main.js`, gated on the `introVisible` flag
-the intro's dismiss handler flips): a simple hand icon pulled back from the
-pony with a dashed line, plus a dashed arc + arrowhead showing the launch
-trajectory — so the slingshot mechanic reads visually even for someone who
-skips the text entirely. Drawn in the same world-space block as the pony
-itself, so it lines up with the idle scene automatically.
+Added a canvas illustration while the intro is up (`drawIntroDemo()` in
+`src/main.js`, gated on the `introVisible` flag the intro's dismiss handler
+flips): a hand icon pulled back from a pony with a dashed line, plus a
+dashed arc + arrowhead into a target cloud — so the slingshot mechanic
+reads visually even for someone who skips the text.
+
+Revision (user feedback: "ничего не понятно как играть и какая механика" —
+looked like an unrelated start screen, not clear how to play): the first
+version anchored the demo to the real pony's actual game position (bottom
+left, per `state.originX`/`groundY`), while the HTML title/text sat
+CSS-centered — on most viewports these landed far apart on screen, so the
+diagram read as disconnected background clutter rather than a labeled
+instruction. Fixed by (1) drawing a dedicated demo pony at a fixed
+screen-fraction anchor (`W*0.5, H*0.56`) directly under the intro text
+instead of tied to the real pony, (2) hiding the real idle pony while the
+intro is up so there's only ever one unicorn on screen, (3) moving the
+`#intro` text block up (`padding-top:16vh` instead of vertical-centered) so
+it sits right above the diagram, and (4) adding short word labels ("1. pull
+back", "2. let go") on the canvas next to the hand/arrow, since the
+arrows-only version still wasn't unambiguous.
 
 ## 13. Open questions for the next session
 
