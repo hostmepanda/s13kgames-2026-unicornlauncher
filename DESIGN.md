@@ -373,6 +373,14 @@ user's): js13k players don't read, so anything beyond 1-2 lines is wasted
 — the existing `#hint` bar (visible during aim) already covers the rest of
 the controls. Cost: ~182 bytes zipped.
 
+Added a canvas illustration on top of the idle aim scene while the intro is
+up (`drawIntroDemo()` in `src/main.js`, gated on the `introVisible` flag
+the intro's dismiss handler flips): a simple hand icon pulled back from the
+pony with a dashed line, plus a dashed arc + arrowhead showing the launch
+trajectory — so the slingshot mechanic reads visually even for someone who
+skips the text entirely. Drawn in the same world-space block as the pony
+itself, so it lines up with the idle scene automatically.
+
 ## 13. Open questions for the next session
 
 - Level advance (3 hits, blind aim after level 1) is implemented; still

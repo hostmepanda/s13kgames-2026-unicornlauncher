@@ -121,8 +121,10 @@ resetLaunch();
 
 // start screen: a couple lines of instructions, dismissed on first tap
 // (sits above the canvas, so this tap doesn't also reach the aim logic)
+let introVisible = true;
 document.getElementById('intro').addEventListener('pointerdown', e => {
   e.currentTarget.remove();
+  introVisible = false;
 });
 
 // ---------- input ----------
@@ -534,6 +536,41 @@ function drawChargePile() {
   }
 }
 
+// Start-screen illustration: a hand pulling the pony back, plus a dashed
+// arc showing the launch trajectory -- so the slingshot mechanic reads
+// visually, not just from the one-line text hint.
+function drawIntroDemo() {
+  const px = state.pony.x, py = state.pony.y - 20;
+  const hx = px - 70, hy = py + 55;
+
+  ctx.strokeStyle = 'rgba(80,60,120,0.55)';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(hx, hy); ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.quadraticCurveTo(px + 90, py - 130, px + 190, py - 40);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // arrowhead at the trajectory's end
+  ctx.fillStyle = 'rgba(80,60,120,0.55)';
+  ctx.beginPath();
+  ctx.moveTo(px + 190, py - 40);
+  ctx.lineTo(px + 176, py - 46);
+  ctx.lineTo(px + 182, py - 30);
+  ctx.closePath(); ctx.fill();
+
+  // hand: a simple fist + thumb
+  ctx.fillStyle = '#f0b088';
+  ctx.beginPath(); ctx.arc(hx, hy, 16, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx + 10, hy - 6, 7, 5, 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(hx, hy, 16, 0, Math.PI * 2); ctx.stroke();
+}
+
 function drawAimUI() {
   if (state.mode !== 'aim' || !state.aimActive) return;
   const p = { x: state.pony.x - camX, y: state.pony.y };
@@ -633,6 +670,7 @@ function render(dt) {
   if (!(state.mode === 'result' && !state.won)) {
     drawPony(ctx, state.pony.x, state.pony.y, state.mode === 'flight' ? state.pony.rot : 0, animT);
   }
+  if (introVisible) drawIntroDemo();
   ctx.restore();
 
   // screen-space UI (power bar, arrow, result text, minimap)
