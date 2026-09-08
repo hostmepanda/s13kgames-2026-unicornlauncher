@@ -102,35 +102,42 @@ time — every rect is first drawn inflated by 1 unit in outline color, then
 the real fills go on top — so the shape list itself only needs region
 colors, not hand-drawn edges.
 
-The sprite is a close recreation of a simple 3-tone pixel-horse icon
-reference (tan body, gray-brown mane/tail/shadow, cream highlights, black
-outline), mirrored to face **right** (head/muzzle toward positive x) to
-match the forward flight direction, with a horn and wing added on top.
-Earlier iterations (chibi-rainbow-icon style, then a tan running pegasus
-with horn+wings, more elaborate) were replaced/reworked after feedback that
-they read as "hamster", "dragon", and "dog" respectively rather than a
-horse — the lesson was to nail a recognizable horse silhouette first, then
-layer fantasy elements on top, rather than design them simultaneously.
+The sprite (as of 2026-08-25) is modeled on a hand-drawn chibi unicorn
+sketch — rounded/chunky body, blocky muzzle, a big rounded mane blob
+(rather than thin bands), a curled hook-shaped tail, lavender leg/belly
+shading — mirrored to face **right** (head/horn toward positive x) to
+match the forward flight direction. The sketch itself has no wings; wings
+were kept from the previous design per explicit direction (the "Unicorns
+and Rainbows" rainbow mane/tail/tip was also kept rather than the sketch's
+single-color pink, for the same reason).
 
-- Head — tapered muzzle (narrowing steps toward the nose tip, light-blue tip
-  highlight, softened vs. the original single hard step), single eye, small
-  ear, light-blue shadow patch at the ear base
-- Horn — curved hook shape (a few offset segments sweeping up then curling
-  back toward the head), two-tone gold
-- Wing — a tapered arc over the back, from the withers up and over toward
-  the rump, white base with a rainbow-colored tip (cyan→purple→pink)
-- Neck — rises from the body to the head, two-tone rainbow mane stripe
-  along its back edge
-- Body — white barrel with a light-blue belly patch
-- Tail — small rainbow zigzag flick (pink→orange→yellow→green) at the
-  rear, drawn behind the body
-- Legs — 4 straight legs (front pair + back pair) with pink hoof tips
+Earlier iterations, for context: a chibi-rainbow-icon style, then a
+faithful tan horse-icon recreation with horn+wings added on top, were each
+replaced/reworked after feedback that they read as "hamster", "dragon",
+and "dog" respectively — the lesson from that round was to nail a
+recognizable horse silhouette first, then layer fantasy elements on top.
+This chibi-sketch pass is a deliberate style pivot away from "realistic
+horse silhouette" back toward "cute icon," matching the reference the user
+provided directly rather than a from-scratch horse study.
+
+- Head — rounded main mass + a distinct blocky muzzle bump (stepped, not
+  tapered), single eye, small lavender ear with a shadow patch at its base
+- Horn — short two-tone gold horn with a pink "collar" cap where it meets
+  the head
+- Wing — two clean white blocks, base flush against the body's back edge
+  (a busier multi-segment rainbow-tipped version, tried first, read as
+  visual noise crammed next to the mane/tail cluster at this scale)
+- Mane — a big rounded rainbow blob (3 fat bands, not thin diagonal
+  stripes) draping from the top of the head down the back of the short,
+  compact neck
+- Body — rounded white barrel with a large lavender belly/hip patch
+- Tail — curled rainbow hook (5 segments sweeping down then back up),
+  drawn behind the body
+- Legs — front pair white, back pair lavender-socked, pink hoof tips —
+  each pair's two legs sit flush against each other (no gap), reading as
+  one wide leg-mass per side rather than 4 separate thin legs
 - Animation — front leg pair and back leg pair bob in opposite phase during
   flight (`Math.sin(t*10)`, rounded to whole pixels to stay crisp)
-
-Recolored white + rainbow (mane, tail, wing tip) per the original
-"Unicorns and Rainbows" concept — the base horse reference used tan/gray
-tones, kept only for the horn's gold and the pink hoof/shading accents.
 
 Overall scale is controlled by `PONY_SCALE` in `src/pony.js` — the unicorn
 should read as a large, "main" object on screen, not a small detail.
