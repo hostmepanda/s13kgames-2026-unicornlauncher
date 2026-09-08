@@ -156,11 +156,19 @@ should read as a large, "main" object on screen, not a small detail.
     which was a bug — see git history) because "off screen" is inherently
     a viewport-relative concept, while the achievable-distance cap keeps
     it from becoming impossible on very wide windows.
-  - **Level-1 tutorial ramp**: the first level's 3 required hits use
-    `screenSpan` fractions of `[0.35-0.5, 0.8-0.95, 1.05-1.2]` (with a
-    lower max height for the first two) — target starts clearly on
-    screen, edges to the border, then just past it, teaching the blind-aim
-    mechanic before the rest of the game relies on it every time
+  - **Level-1 tutorial ramp**: the first level's 3 required hits (with a
+    lower max height for the first two) — target starts clearly on screen,
+    edges to the border, then just past it, teaching the blind-aim
+    mechanic before the rest of the game relies on it every time. Tier 0
+    ("clearly on screen and close") is `PONY_W*2 + rand(0,40)` — an
+    absolute ~2 pony-widths (`PONY_W = 140`), clamped to `screenSpan*0.85`
+    so it still fits on narrow phones. Originally this was a `screenSpan`
+    fraction (0.35-0.5) like the other two tiers, which put the target
+    right on top of the pony on narrow mobile viewports (reported bug,
+    fixed 2026-08-24) since screenSpan itself is small there — a fraction
+    of a small number stays small, while "2 pony-widths" doesn't. Tiers 1
+    and 2 stayed screenSpan fractions (0.8-0.95, 1.05-1.2) since "near the
+    edge" / "just past it" are inherently screen-relative concepts.
 - In the aim/result phases the camera doesn't move (aim and result are static
   screens)
 - The ground is lined with pixel-art grass tufts (`src/grass.js`, same

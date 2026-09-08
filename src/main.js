@@ -84,6 +84,7 @@ function resetLaunch() {
 const TARGET_DIST_ABS_MIN = 300;
 const TARGET_DIST_ACHIEVABLE_MAX = 1400;
 const TARGET_HEIGHT_MIN = 50, TARGET_HEIGHT_MAX = 320;
+const PONY_W = 140; // approx rendered pony width (world px), for "N pony-widths away" spacing
 
 function placeTarget() {
   // visible world-span from the launch point to the right edge of screen
@@ -102,9 +103,17 @@ function placeTarget() {
     // reachable, and enforcing it would push tier 0 off screen on narrow
     // viewports, defeating the point.
     const tier = state.levelHits; // 0, 1, 2
-    const distFrac = [0.35, 0.8, 1.05][tier] + Math.random() * 0.15;
     heightMax = [130, 200, TARGET_HEIGHT_MAX][tier];
-    dist = Math.min(TARGET_DIST_ACHIEVABLE_MAX, screenSpan * distFrac);
+    if (tier === 0) {
+      // "clearly on screen and close" as an absolute ~2 pony-widths away,
+      // not a screenSpan fraction -- on narrow mobile viewports a fraction
+      // like 0.35 put the target right on top of the pony (reported bug),
+      // since screenSpan itself is small there
+      dist = Math.min(screenSpan * 0.85, PONY_W * 2 + Math.random() * 40);
+    } else {
+      const distFrac = [null, 0.8, 1.05][tier] + Math.random() * 0.15;
+      dist = Math.min(TARGET_DIST_ACHIEVABLE_MAX, screenSpan * distFrac);
+    }
   } else {
     // blind aim: target sits just past the visible screen edge, and each
     // full cycle through all 5 locations pushes it further out
