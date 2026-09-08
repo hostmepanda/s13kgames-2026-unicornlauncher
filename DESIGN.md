@@ -426,6 +426,34 @@ it sits right above the diagram, and (4) adding short word labels ("1. pull
 back", "2. let go") on the canvas next to the hand/arrow, since the
 arrows-only version still wasn't unambiguous.
 
+## 13a. HUD consolidation, mute/restart, bigger text (2026-09-08)
+
+User feedback: all text (HUD stats, the bottom control hint, the intro) read
+as "super mелко" (tiny) on both mobile and desktop, and the control hint was
+stuck at the very bottom of the screen where it's easy to miss/get covered.
+Also wanted: one place for all stats plus a music mute toggle and a restart
+button.
+
+- `#hud` now holds tries/level/hits/flaps *and* two `<button>`s (🔊/🔇 mute,
+  ↺ restart) in one wrapping flex row, centered instead of
+  `space-between` (space-between only worked with 3 items; 5 needs to be
+  able to wrap to two lines on narrow phones without going edge-to-edge).
+- The control hint (`#hint`) moved from `bottom:18px` to `top:64px` (right
+  under the HUD row) — same fixed/always-visible bar, just relocated so it's
+  not competing with the bottom of the viewport (home indicator / gesture
+  bar / on-screen keyboard area on mobile).
+- Font sizes bumped across the board: HUD 19px → 23px, hint 13px → 17px
+  (+bold), intro body 20px → 24px, intro title 28px → 32px.
+- Mute: `sound.js` now routes every sound (SFX, wind, music) through one
+  shared `master` GainNode instead of connecting straight to
+  `ac.destination`; `toggleMute()` just ramps that gain to 0/1, so a single
+  toggle mutes everything without tracking per-sound state.
+- Restart: `resetGame()` in `main.js` zeroes `tries`/`level`/`levelHits`/
+  `bgLevel`, stops any in-flight wind sound, and calls the existing
+  `resetLaunch()` — works from any mode (aim/flight/result), verified by
+  hitting it mid-flight and confirming the pony snaps back to the start
+  with flaps/level/tries all cleared.
+
 ## 13. Open questions for the next session
 
 - Level advance (3 hits, blind aim after level 1) is implemented; still

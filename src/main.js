@@ -1,5 +1,5 @@
 import { drawPony } from './pony.js';
-import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, startWindSound, updateWindSound, stopWindSound, startMusic } from './sound.js';
+import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, startWindSound, updateWindSound, stopWindSound, startMusic, toggleMute } from './sound.js';
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -134,6 +134,26 @@ let introVisible = true;
 document.getElementById('intro').addEventListener('pointerdown', e => {
   e.currentTarget.remove();
   introVisible = false;
+});
+
+// ---------- HUD buttons ----------
+function resetGame() {
+  state.tries = 0;
+  state.level = 0;
+  state.levelHits = 0;
+  state.bgLevel = 0;
+  stopWindSound();
+  resetLaunch();
+  document.getElementById('tries').textContent = 0;
+  document.getElementById('level').textContent = 1;
+  document.getElementById('hits').textContent = 0;
+  document.getElementById('flaps').textContent = 0;
+}
+document.getElementById('restart').addEventListener('pointerdown', resetGame);
+
+const muteBtn = document.getElementById('mute');
+muteBtn.addEventListener('pointerdown', () => {
+  muteBtn.textContent = toggleMute() ? '🔇' : '🔊';
 });
 
 // ---------- input ----------

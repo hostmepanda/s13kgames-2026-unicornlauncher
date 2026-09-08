@@ -1,10 +1,25 @@
 // Tiny procedural WebAudio SFX -- no samples, everything is synthesized on
 // the fly to keep byte cost near zero. AudioContext is created lazily on
 // the first sound (always triggered from a user gesture: pointerdown/tap).
-let ac;
+let ac, master;
 function audioCtx() {
-  if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (!ac) {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = ac.createGain();
+    master.connect(ac.destination);
+  }
   return ac;
+}
+
+// Single mute toggle for everything (SFX, wind, music) via the shared master
+// gain, rather than tracking per-sound state -- simpler and it's the only
+// control the HUD exposes anyway.
+export let muted = false;
+export function toggleMute() {
+  muted = !muted;
+  audioCtx();
+  master.gain.setTargetAtTime(muted ? 0 : 1, ac.currentTime, 0.05);
+  return muted;
 }
 
 // One oscillator with a short exponential-decay envelope.
@@ -18,7 +33,7 @@ function tone(freq, dur, type, vol, freqEnd) {
   if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, t0 + dur);
   gain.gain.setValueAtTime(vol, t0);
   gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-  osc.connect(gain); gain.connect(a.destination);
+  osc.connect(gain); gain.connect(master);
   osc.start(t0); osc.stop(t0 + dur);
 }
 
@@ -47,7 +62,7 @@ export function startWindSound() {
   filter.type = 'bandpass'; filter.Q.value = 0.8; filter.frequency.value = 300;
   const gain = a.createGain();
   gain.gain.value = 0;
-  noise.connect(filter); filter.connect(gain); gain.connect(a.destination);
+  noise.connect(filter); filter.connect(gain); gain.connect(master);
   noise.start();
   gain.gain.linearRampToValueAtTime(0.05, a.currentTime + 0.15);
   wind = { noise, filter, gain };
