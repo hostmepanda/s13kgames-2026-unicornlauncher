@@ -129,13 +129,24 @@ document.getElementById('intro').addEventListener('pointerdown', e => {
 
 // ---------- input ----------
 let pointerId = null;
+// Drag vector is measured from the pony's on-screen position (same anchor
+// drawAimUI draws the arrow from), not from wherever the finger first
+// touched down. Anchoring to the touch-down point instead (tried
+// previously) meant a finger placed slightly off the pony read as "nothing
+// happens" until you dragged far enough to build a vector from that
+// arbitrary point -- confusing, since the visible pull is relative to the
+// pony on screen. This matches how slingshot games usually work (Angry
+// Birds etc.): pull is measured from the fixed anchor, not the touch start.
+function aimVectorFrom(e) {
+  return [e.clientX - (state.pony.x - camX), e.clientY - state.pony.y];
+}
+
 cv.addEventListener('pointerdown', e => {
   startMusic();
   if (state.mode === 'aim') {
     pointerId = e.pointerId;
     state.aimActive = true;
-    state.aimStartX = e.clientX; state.aimStartY = e.clientY;
-    state.aimDX = 0; state.aimDY = 0;
+    [state.aimDX, state.aimDY] = aimVectorFrom(e);
     sfxAim();
   } else if (state.mode === 'flight') {
     doFlap();
@@ -146,8 +157,7 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('pointermove', e => {
   if (state.mode === 'aim' && state.aimActive && e.pointerId === pointerId) {
-    state.aimDX = e.clientX - state.aimStartX;
-    state.aimDY = e.clientY - state.aimStartY;
+    [state.aimDX, state.aimDY] = aimVectorFrom(e);
   }
 });
 cv.addEventListener('pointerup', e => {

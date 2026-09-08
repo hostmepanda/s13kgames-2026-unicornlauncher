@@ -32,6 +32,15 @@ Rainbow Elevator.
 - The player presses and drags a finger away from the unicorn, in the
   direction opposite to the throw (slingshot logic: pull back-down → flies
   forward-up)
+- The drag vector is measured from the pony's on-screen position (same
+  anchor `drawAimUI()` draws the arrow from), not from wherever the finger
+  first touched down (`aimVectorFrom(e)` in `src/main.js`, fixed
+  2026-08-24). Anchoring to the touch-down point instead — the original
+  implementation — meant a finger that landed even slightly off the pony
+  computed its pull relative to that arbitrary point instead of the visible
+  pony, which read as "nothing happens" or "the angle doesn't respond."
+  Matches how slingshot games usually work (Angry Birds etc.): the pull is
+  relative to the fixed anchor, not the touch start
 - While held — a power indicator grows (a linear bar at the bottom of the
   screen with a rainbow gradient fill)
 - Also while held — a rainbow charge pile builds up under the unicorn's
