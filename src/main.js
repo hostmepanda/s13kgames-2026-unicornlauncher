@@ -1,5 +1,5 @@
 import { drawPony } from './pony.js';
-import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, startWindSound, updateWindSound, stopWindSound, startMusic, toggleMute } from './sound.js';
+import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, sfxThunder, startWindSound, updateWindSound, stopWindSound, startMusic, toggleMute } from './sound.js';
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -60,6 +60,44 @@ const state = {
 };
 
 let camX = 0; // world-space camera offset (screen_x = world_x - camX)
+
+// Mountains-only weather hazard: rain is pure atmosphere (see drawRain),
+// lightning is a timed strike -- flying through the strike's x-column
+// during its brief active window is an instant miss, the same role a
+// bird/wind/lava hazard plays for the other locations. Each location keeps
+// exactly one hazard type (rain+lightning together count as Mountains').
+// Runs off state.bgLevel (the location actually on screen), not state.level,
+// and just keeps ticking in the background rather than resetting per
+// attempt -- strikes aren't tied to the current flight.
+function isMountains() { return state.bgLevel % LOCATIONS.length === 1; }
+let lightningTimer = 2 + Math.random() * 2;
+let lightningX = 0;
+let lightningFlash = 0; // 0..1, visual bolt/flash brightness, decays after a strike
+let lightningActive = false; // true only during the brief hazardous window
+let lightningActiveT = 0;
+
+function updateWeather(dt) {
+  if (!isMountains()) return;
+  lightningTimer -= dt;
+  if (lightningTimer <= 0) {
+    lightningX = state.originX + 150 + Math.random() * (TARGET_DIST_ACHIEVABLE_MAX - 100);
+    lightningFlash = 1;
+    lightningActive = true;
+    lightningActiveT = 0.18;
+    lightningTimer = 2.6 + Math.random() * 2.4;
+    sfxThunder();
+  }
+  if (lightningActive) {
+    lightningActiveT -= dt;
+    if (lightningActiveT <= 0) lightningActive = false;
+  }
+  lightningFlash = Math.max(0, lightningFlash - dt * 2.2);
+
+  if (lightningActive && state.mode === 'flight') {
+    const p = state.pony;
+    if (Math.abs(p.x - lightningX) < 42 && p.y < groundY) endFlight(false);
+  }
+}
 
 function resetLaunch() {
   state.mode = 'aim';
@@ -293,6 +331,8 @@ function update(dt) {
     }
   }
 
+  updateWeather(dt);
+
   // hearts physics (always update, used in result burst + flap puffs)
   for (const h of state.hearts) {
     h.age += dt;
@@ -413,6 +453,40 @@ function drawTreeShape(x, baseY, h, i) {
 }
 function drawTrees() { drawLayer(0.6, 70, 34, 14, 6, drawTreeShape); }
 
+// Mountains' rain: pure atmosphere, no physics effect -- deterministic
+// streaks driven by animT so no per-particle state is needed (same trick
+// the parallax layers use, just screen-space instead of world-space).
+function drawRain() {
+  ctx.strokeStyle = 'rgba(210,225,255,0.55)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 36; i++) {
+    const x = ((i * 53.7 + animT * 90) % (W + 60)) - 30;
+    const y = ((i * 71.3 + animT * 620) % (H + 40)) - 20;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - 10, y + 22);
+    ctx.stroke();
+  }
+}
+
+// Mountains' lightning bolt: a jagged line from sky to ground at the active
+// strike's world x, in world space so it scrolls with the camera like the
+// pony/target/trail do (drawn inside the same translate(-camX,0) block).
+function drawLightningBolt() {
+  if (!isMountains() || lightningFlash <= 0) return;
+  ctx.strokeStyle = `rgba(255,255,180,${Math.min(1, lightningFlash * 1.5)})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(lightningX, 0);
+  const segments = 6;
+  for (let i = 1; i <= segments; i++) {
+    const cy = (groundY / segments) * i;
+    const cx = lightningX + Math.sin(i * 12.9898 + lightningX) * 18;
+    ctx.lineTo(cx, cy);
+  }
+  ctx.stroke();
+}
+
 // -- location 0: heavens (soft cloud blobs instead of ground scenery) --
 function drawCloudBgShape(x, baseY, h, color) {
   const r = h * 0.5;
@@ -492,7 +566,7 @@ function drawCaves() {
 function drawBackgroundLayers() {
   const idx = state.bgLevel % LOCATIONS.length;
   if (idx === 0) drawHeavens();
-  else if (idx === 1) { drawMountains(); drawTrees(); }
+  else if (idx === 1) { drawMountains(); drawTrees(); drawRain(); }
   else if (idx === 2) drawCity();
   else if (idx === 3) drawBeach();
   else drawCaves();
@@ -729,6 +803,7 @@ function render(dt) {
   ctx.save();
   ctx.translate(-camX, 0);
   drawGround();
+  drawLightningBolt();
   drawTarget();
   drawTrail();
   drawHearts();
@@ -741,6 +816,12 @@ function render(dt) {
     drawPony(ctx, state.pony.x, state.pony.y, state.mode === 'flight' ? state.pony.rot : 0, animT);
   }
   ctx.restore();
+
+  // screen-space flash from a lightning strike, on top of everything
+  if (lightningFlash > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${lightningFlash * 0.5})`;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   // screen-space UI (power bar, arrow, result text, minimap)
   drawAimUI();

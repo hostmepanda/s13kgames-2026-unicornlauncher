@@ -346,7 +346,7 @@ the original easy→hard draft):
 | # | Location | Notes | Obstacle introduced |
 |---|---|---|---|
 | 1 | Heavens | clouds/glow instead of ground scenery — intro level. Background built 2026-08-23 (floating cloud-blob layers, warm gold sky) | none |
-| 2 | Mountains | background built (3-layer parallax + trees) | none |
+| 2 | Mountains | background built (3-layer parallax + trees) | rain + lightning |
 | 3 | City | background built 2026-08-23 (building silhouettes, tiny window highlights) | headwind birds |
 | 4 | Beach | background built 2026-08-23 (palm trees, sea swell, sand ground) | wind gusts (sideways drift in flight) |
 | 5 | Caves | background built 2026-08-23 (ceiling stalactites, dark sky, rock ground), finale | volcano eruption (lava/underground) |
@@ -373,15 +373,53 @@ when the hit registered, which read as jarring. Now the just-cleared
 location's scenery stays visible through the "Level up!" result screen,
 and the new location only appears once the next attempt actually starts.
 
-Obstacle-to-location pairing stays fixed regardless of order (wind=Beach,
-birds=City, volcano=Caves) — only the sequence changed, not which obstacle
-belongs to which location. Heavens and Mountains have no obstacle, so
-difficulty still ramps up over the run even though it's no longer a flat
-none→one→one→one→combo curve.
+Obstacle-to-location pairing stays fixed regardless of order (rain+lightning
+=Mountains, wind=Beach, birds=City, volcano=Caves) — only the sequence
+changed, not which obstacle belongs to which location. Heavens has no
+obstacle, so difficulty still ramps up over the run even though it's no
+longer a flat none→one→one→one→combo curve.
 
-Not yet decided: exact distance/difficulty curve per level, and whether
-obstacles from earlier levels also reappear (harder) in later ones or each
-location keeps its own single obstacle type.
+**Resolved (2026-09-08): each location keeps exactly one obstacle type** —
+they don't stack or reappear across later levels/cycles. Difficulty still
+ramps per full cycle through `placeTarget()`'s existing `cycle` factor
+(farther/smaller targets), not by adding more hazards.
+
+### Mountains: rain + lightning (implemented 2026-09-08)
+
+First obstacle actually built (birds/wind/volcano are still just planned).
+Split into two parts per explicit user direction (asked which of three
+options: pure atmosphere / drag-like wind resistance / hazard-that-misses —
+user picked hazard):
+
+- **Rain** — pure atmosphere, no physics effect. `drawRain()` in `main.js`,
+  called from `drawBackgroundLayers()` for the Mountains index only.
+  Diagonal streaks positioned deterministically from `i` and `animT` (same
+  trick the parallax layers already use for tiling) rather than a stored
+  particle array — cheaper and avoids adding another array to `state`.
+- **Lightning** — an actual hazard, the same role headwind birds / wind
+  gusts / volcano lava are meant to play for their own locations: a bolt
+  strikes down at a random world x every ~2.6-5s (`updateWeather(dt)`,
+  called from `update()`); for a brief ~0.18s window
+  (`lightningActive`/`lightningActiveT`), flying through that x-column
+  (`|pony.x - lightningX| < 42`, pony still airborne) is an instant miss
+  via the existing `endFlight(false)` — no new result state needed. A
+  `sfxThunder()` cue plays at the strike, plus a decaying full-screen white
+  flash (`lightningFlash`, screen-space, drawn after the world-space
+  `ctx.restore()` so it isn't shifted by the camera) and a jagged bolt
+  drawn in world space (`drawLightningBolt()`, inside the same
+  `translate(-camX,0)` block as the pony/target, so it scrolls correctly
+  with the camera) for both warning and payoff.
+- Both are keyed off `state.bgLevel` (the location actually on screen, not
+  `state.level`), consistent with how the background switch itself is
+  deferred — see the background-switch-timing note above.
+- `sfxThunder()` added to `sound.js`: a low sawtooth rumble plus a short
+  delayed square-wave crack.
+- QA note: automated (headless Chrome) testing showed `requestAnimationFrame`
+  doesn't keep ticking between tool calls unless something forces a repaint
+  (e.g. a screenshot) — real browsers don't have this issue, it only
+  affected how the fix was verified (via a temporary `window.__dbg` hook
+  with a `testHit()` that force-set the pony into the strike zone, and
+  screenshots to pump frames), not the shipped code.
 
 **Byte budget check** (measured by building actual past commits, not
 guessed): a simple procedural parallax layer (silhouette tiling, no
