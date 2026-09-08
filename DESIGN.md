@@ -66,12 +66,13 @@ Rainbow Elevator.
   behind the pony and tapering thinner toward the older/faded end
 
 ### Phase 4 — Result
-- **Hitting the target** (collision radius ~46px, checked against a point
-  offset from the pony's anchor toward its visual body center — the anchor
-  itself sits near the hooves, ~45px below the body/neck, so checking the
-  raw anchor let the top of the pony pass clean through the target without
-  registering a hit; fixed 2026-08-23) → success, heart particles around
-  the target, positive text feedback,
+- **Hitting the target** (checked as `target.r + PONY_HIT_RADIUS` (55px)
+  from the pony's raw anchor point — an earlier version offset the check
+  point toward the body's visual center instead, which fixed misses near
+  the head but broke obvious hits near the legs/anchor, and drifted further
+  off as the sprite rotated in flight since the offset didn't rotate with
+  it; a generous rotation-independent radius fudge replaced it 2026-08-24)
+  → success, heart particles around the target, positive text feedback,
   and the level's hit counter (`level N · hits/3` in the HUD) increments.
   On the 3rd hit the level advances (`state.level++`, hits reset to 0,
   result text reads "Level up!" instead of "Made it!")
