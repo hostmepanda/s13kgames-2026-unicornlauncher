@@ -119,6 +119,12 @@ function placeTarget() {
 resize();
 resetLaunch();
 
+// start screen: a couple lines of instructions, dismissed on first tap
+// (sits above the canvas, so this tap doesn't also reach the aim logic)
+document.getElementById('intro').addEventListener('pointerdown', e => {
+  e.currentTarget.remove();
+});
+
 // ---------- input ----------
 let pointerId = null;
 cv.addEventListener('pointerdown', e => {

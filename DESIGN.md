@@ -360,7 +360,19 @@ remaining 4 locations + their obstacles: **~3000-5000 bytes**. Current
 build is **4109 bytes zipped** of the 13312 limit, so there's comfortable
 headroom (~9200 bytes) even on the pessimistic end of that estimate.
 
-## 12. Open questions for the next session
+## 12. Start screen (2026-08-24)
+
+A plain HTML overlay (`#intro` in `src/index.html`/`style.css`), not a
+canvas-drawn screen or a game mode -- deliberately just two lines: the
+title and one instruction ("Drag back, release to launch — hit the
+cloud!"), plus a small "tap to start" hint. Sits above the canvas and is
+removed on its own `pointerdown` listener, so the dismiss-tap never also
+reaches the canvas's aim logic underneath. Rationale (explicitly the
+user's): js13k players don't read, so anything beyond 1-2 lines is wasted
+— the existing `#hint` bar (visible during aim) already covers the rest of
+the controls. Cost: ~182 bytes zipped.
+
+## 13. Open questions for the next session
 
 - Level advance (3 hits, blind aim after level 1) is implemented; still
   open: per-location target distance/difficulty tuning once locations 2-5

@@ -16,3 +16,11 @@ html,body{
   color:#2a2a3a; font-size:13px; text-align:center; pointer-events:none;
   background:rgba(255,255,255,.6); padding:3px 10px; border-radius:8px;
 }
+#intro{
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center; gap:8px;
+  color:#2a2a3a; font-size:20px; line-height:1.5;
+  background:rgba(255,255,255,.55);
+}
+#intro b{font-size:28px;}
+#intro i{font-size:14px; opacity:.7; font-style:normal;}
