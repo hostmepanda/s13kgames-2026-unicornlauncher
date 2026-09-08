@@ -75,12 +75,20 @@ Rainbow Elevator.
   behind the pony and tapering thinner toward the older/faded end
 
 ### Phase 4 — Result
-- **Hitting the target** (checked as `target.r + PONY_HIT_RADIUS` (55px)
-  from the pony's raw anchor point — an earlier version offset the check
-  point toward the body's visual center instead, which fixed misses near
-  the head but broke obvious hits near the legs/anchor, and drifted further
-  off as the sprite rotated in flight since the offset didn't rotate with
-  it; a generous rotation-independent radius fudge replaced it 2026-08-24)
+- **Hitting the target** (checked as `target.r + PONY_HIT_RADIUS` from the
+  pony's raw anchor point — an earlier version offset the check point
+  toward the body's visual center instead, which fixed misses near the
+  head but broke obvious hits near the legs/anchor, and drifted further off
+  as the sprite rotated in flight since the offset didn't rotate with it; a
+  rotation-independent radius fudge replaced it 2026-08-24). `PONY_HIT_RADIUS`
+  started at 55 but was tightened to 35 the same day: mathematically bounded
+  (max combined radius ~101px) so it could never be as far off as a report
+  made it look (likely a device-pixel-ratio screenshot-scale illusion — the
+  math is in CSS px, a mobile screenshot is often physical px), but 101px
+  read as "hit registers when clearly far away" against a ~46px cloud icon.
+  35 still comfortably covers reasonable body-overlap (verified: target near
+  the legs/anchor at a steep flight rotation still registers) without
+  feeling magnetic
   → success, heart particles around the target, positive text feedback,
   and the level's hit counter (`level N · hits/3` in the HUD) increments.
   On the 3rd hit the level advances (`state.level++`, hits reset to 0,

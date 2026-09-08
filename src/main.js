@@ -256,9 +256,15 @@ function update(dt) {
     // the blind spot instead of fixing it: it caught hits near the head but
     // missed obvious ones near the legs/anchor, and drifted further off as
     // the sprite rotated in flight (the offset didn't rotate with it). A
-    // generous rotation-independent radius fudge from the anchor covers the
-    // whole body reliably instead.
-    const PONY_HIT_RADIUS = 55;
+    // rotation-independent radius fudge from the anchor covers the whole
+    // body reliably instead. 55 (tried first) was mathematically bounded
+    // (target.r + 55 <= 101px) but read as "hit registers when clearly far
+    // away" -- generous relative to the ~46px cloud icon's own size, even
+    // though it could never be as far off as it looked in a screenshot
+    // (likely a device-pixel-ratio scale illusion: the screenshot was
+    // probably physical pixels, this radius is CSS px). Tightened so a hit
+    // reads as earned rather than magnetic.
+    const PONY_HIT_RADIUS = 35;
     const dTgt = Math.hypot(p.x - state.target.x, p.y - state.target.y);
     if (dTgt < state.target.r + PONY_HIT_RADIUS) {
       endFlight(true);
