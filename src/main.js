@@ -895,7 +895,14 @@ function render(dt) {
     // pony is on screen -- two unicorns at once read as confusing, not helpful
     drawIntroDemo();
   } else if (!(state.mode === 'result' && !state.won)) {
-    drawPony(ctx, state.pony.x, state.pony.y, state.mode === 'flight' ? state.pony.rot : 0, animT);
+    // Always use the pony's actual rotation, not just during 'flight'.
+    // Forcing it upright (0) on the result screen looked like a false-
+    // positive hit: the sprite froze level while the trail showed a steep
+    // climb, so the horn/head that actually reached the target visually
+    // wasn't where the target was anymore (user report: "юникорн реально
+    // хитит облако не касаясь его"). state.pony.rot is already 0 during
+    // 'aim' (reset in resetLaunch()), so this needs no special-casing.
+    drawPony(ctx, state.pony.x, state.pony.y, state.pony.rot, animT);
   }
   ctx.restore();
 

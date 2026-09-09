@@ -102,7 +102,18 @@ Rainbow Elevator.
   read as "hit registers when clearly far away" against a ~46px cloud icon.
   35 still comfortably covers reasonable body-overlap (verified: target near
   the legs/anchor at a steep flight rotation still registers) without
-  feeling magnetic
+  feeling magnetic.
+  **Rendering bug, not a collision bug (found 2026-09-09, user report:
+  "единорог хитит облако реально не касаясь его")**: the collision math was
+  fine, but the result-screen render forced the pony's rotation to 0
+  (`state.mode === 'flight' ? state.pony.rot : 0`) instead of keeping its
+  actual rotation at the moment of impact. A hit at a steep flight angle
+  would freeze upright on the result screen, moving the visual horn/head
+  away from where the target actually was touched, reading as a false
+  positive even though the hitbox was correct the whole time. Fixed by
+  always passing `state.pony.rot` (already 0 during 'aim', reset in
+  `resetLaunch()`, so the ternary was pure liability, not doing anything
+  useful during 'aim').
   → success, heart particles around the target, positive text feedback,
   and the level's hit counter (`level N · hits/3` in the HUD) increments.
   On the 3rd hit the level advances (`state.level++`, hits reset to 0,
