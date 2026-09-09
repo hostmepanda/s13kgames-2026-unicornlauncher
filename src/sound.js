@@ -50,6 +50,8 @@ export function sfxThunder() {
   tone(90, 0.5, 'sawtooth', 0.25, 40);
   setTimeout(() => tone(180, 0.15, 'square', 0.15, 60), 60);
 }
+export function sfxGust() { tone(200, 0.3, 'sine', 0.14, 340); }
+export function sfxLava() { tone(70, 0.6, 'sawtooth', 0.28, 30); }
 
 // Continuous wind whoosh for the flight phase: looping filtered noise,
 // filter cutoff tracks speed so faster/steeper launches sound windier.

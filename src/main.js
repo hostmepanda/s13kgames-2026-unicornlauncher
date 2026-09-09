@@ -1,5 +1,5 @@
 import { drawPony } from './pony.js';
-import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, sfxBird, sfxThunder, startWindSound, updateWindSound, stopWindSound, startMusic, toggleMute } from './sound.js';
+import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, sfxBird, sfxThunder, sfxGust, sfxLava, startWindSound, updateWindSound, stopWindSound, startMusic, toggleMute } from './sound.js';
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -113,9 +113,10 @@ function updateWeather(dt) {
 // every few seconds. Unlike lightning's instant miss, this is a headwind --
 // flying through the flock's zone bleeds off forward speed continuously
 // for as long as the pony is inside it, rather than ending the flight
-// outright (keeps the four locations' hazards each doing something
-// different: rain+lightning = instant-miss hazard, birds = drag,
-// wind gusts/volcano = still to design).
+// outright (each of the four locations' hazards does something different:
+// Mountains = instant-miss hazard, City = continuous drag, Beach = a one-
+// off vertical nudge below, Caves = instant-miss hazard again but themed
+// and shaped differently -- low altitude only, not any altitude).
 function isCity() { return state.bgLevel % LOCATIONS.length === 2; }
 const BIRD_ZONE = 90; // half-width of the headwind zone, world px
 let birdX = 0, birdTimer = 1 + Math.random() * 2, birdInside = false;
@@ -141,6 +142,72 @@ function updateBirds(dt) {
     birdInside = inside;
   } else {
     birdInside = false;
+  }
+}
+
+// Beach-only obstacle: a gust zone that relocates like the flock/lightning
+// above, but instead of a continuous drag or an instant miss, it's a one-
+// off vertical nudge -- flying through it while it's active gives the pony
+// a single up or down kick (sign picked per-gust), simulating a crosswind
+// shoving it off its arc without ending the flight. `gustHit` (like
+// `birdInside`) makes sure the kick applies once per pass, not every frame.
+function isBeach() { return state.bgLevel % LOCATIONS.length === 3; }
+const GUST_ZONE = 80;
+let gustX = 0, gustTimer = 1 + Math.random() * 2, gustActive = false, gustActiveT = 0, gustSign = 1, gustHit = false;
+
+function updateWind(dt) {
+  if (!isBeach()) { gustActive = false; gustHit = false; return; }
+  if (state.mode === 'flight') gustTimer -= dt;
+  if (gustTimer <= 0) {
+    gustX = state.pony.x + 150 + Math.random() * 350;
+    gustSign = Math.random() < 0.5 ? -1 : 1;
+    gustActive = true;
+    gustActiveT = 0.6;
+    gustHit = false;
+    gustTimer = 1.8 + Math.random() * 1.8;
+    sfxGust();
+  }
+  if (gustActive) {
+    gustActiveT -= dt;
+    if (gustActiveT <= 0) gustActive = false;
+  }
+  if (gustActive && !gustHit && state.mode === 'flight') {
+    const p = state.pony;
+    if (Math.abs(p.x - gustX) < GUST_ZONE && p.y < groundY) {
+      p.vy += gustSign * 420;
+      gustHit = true;
+    }
+  }
+}
+
+// Caves-only obstacle: a lava column erupting from the ground at a
+// relocating x. Same instant-miss shape as Mountains' lightning, but
+// themed and triggered differently -- it only matters at low altitude
+// (near the ground, where the lava actually reaches), so flying high
+// through Caves dodges it entirely rather than needing to dodge every
+// altitude the way a lightning bolt (sky to ground) does.
+function isCaves() { return state.bgLevel % LOCATIONS.length === 4; }
+const LAVA_ZONE = 55;
+const LAVA_HEIGHT = 160; // how far up from the ground the column reaches
+let lavaX = 0, lavaTimer = 1 + Math.random() * 2, lavaActive = false, lavaActiveT = 0;
+
+function updateVolcano(dt) {
+  if (!isCaves()) { lavaActive = false; return; }
+  if (state.mode === 'flight') lavaTimer -= dt;
+  if (lavaTimer <= 0) {
+    lavaX = state.pony.x + 150 + Math.random() * 350;
+    lavaActive = true;
+    lavaActiveT = 0.5;
+    lavaTimer = 2 + Math.random() * 2;
+    sfxLava();
+  }
+  if (lavaActive) {
+    lavaActiveT -= dt;
+    if (lavaActiveT <= 0) lavaActive = false;
+  }
+  if (lavaActive && state.mode === 'flight') {
+    const p = state.pony;
+    if (Math.abs(p.x - lavaX) < LAVA_ZONE && p.y > groundY - LAVA_HEIGHT) endFlight(false);
   }
 }
 
@@ -389,6 +456,8 @@ function update(dt) {
 
   updateWeather(dt);
   updateBirds(dt);
+  updateWind(dt);
+  updateVolcano(dt);
 
   // hearts physics (always update, used in result burst + flap puffs)
   for (const h of state.hearts) {
@@ -601,6 +670,37 @@ function drawBirds() {
     const flap = Math.sin(animT * 10 + i) * 6;
     drawBirdShape(bx, by, flap);
   }
+}
+
+// Beach's wind gust: a few curved streaks at gustX, bowed in the direction
+// the kick pushes (gustSign), in world space like the bird/lightning
+// markers so it lines up with the real physics zone.
+function drawWindGust() {
+  if (!isBeach() || !gustActive) return;
+  const y = groundY - 180;
+  ctx.strokeStyle = 'rgba(90,170,220,0.85)';
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 3; i++) {
+    const gx = gustX + (i - 1) * 24;
+    const gy = y + i * 12;
+    ctx.beginPath();
+    ctx.moveTo(gx - 14, gy + gustSign * 16);
+    ctx.quadraticCurveTo(gx, gy, gx + 14, gy - gustSign * 16);
+    ctx.stroke();
+  }
+}
+
+// Caves' lava column: rises from the ground at lavaX while active; only
+// dangerous near the ground (LAVA_HEIGHT), so it reads as a hazard to fly
+// over rather than through, unlike lightning's full-height strike.
+function drawLava() {
+  if (!isCaves() || !lavaActive) return;
+  const top = groundY - LAVA_HEIGHT;
+  const grad = ctx.createLinearGradient(0, top, 0, groundY);
+  grad.addColorStop(0, 'rgba(255,190,70,0.9)');
+  grad.addColorStop(1, 'rgba(255,70,40,0.95)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(lavaX - 18, top, 36, groundY - top);
 }
 
 // -- location 3: beach (sea swell + palm trees) --
@@ -886,6 +986,8 @@ function render(dt) {
   drawGround();
   drawLightningBolt();
   drawBirds();
+  drawWindGust();
+  drawLava();
   drawTarget();
   drawTrail();
   drawHearts();

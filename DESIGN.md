@@ -376,10 +376,8 @@ the original easy→hard draft):
 | 4 | Beach | background built 2026-08-23 (palm trees, sea swell, sand ground) | wind gusts (sideways drift in flight) |
 | 5 | Caves | background built 2026-08-23 (ceiling stalactites, dark sky, rock ground), finale | volcano eruption (lava/underground) |
 
-Backgrounds are visual-only for Heavens/Beach/Caves so far — Mountains
-(rain+lightning) and City (birds) obstacles are implemented, see the
-Mountains write-up above and the City one right below it. Beach/Caves
-obstacles are still tracked separately (see section 8).
+All four non-Heavens locations now have their obstacle implemented (see
+the per-location write-ups below); Heavens stays obstacle-free by design.
 
 **Difficulty ramps per full cycle** (2026-08-23): looping back to Heavens
 after Caves isn't a flat repeat. `placeTarget()` computes
@@ -523,15 +521,49 @@ Fix, same shape for both:
   the pony's position at the moment of triggering, and reproducing an
   actual lightning-caused miss end-to-end; removed before commit.
 
+### Beach: wind gusts (implemented 2026-09-09)
+
+A third distinct hazard shape (Mountains = instant-miss, City = continuous
+drag, Beach = one-off nudge): a gust zone relocates the same way as the
+lightning/bird fix (`state.pony.x + 150..500`, only while `state.mode ===
+'flight'`), and flying through it while active (`gustActiveT`, 0.6s window)
+gives the pony a single vertical kick (`p.vy += gustSign * 420`, sign
+randomized per gust) rather than a continuous force or an instant fail. A
+`gustHit` edge flag (same pattern as `birdInside`) makes sure the kick
+applies once per pass through the zone, not every frame while inside it.
+Drawn as three curved streaks bowed in the push direction
+(`drawWindGust()`), world-space alongside the pony/target/lightning/birds.
+`sfxGust()` (a short sine sweep) plays on relocation, not on the actual
+kick, so it also works as a heads-up.
+
+### Caves: volcano eruption (implemented 2026-09-09)
+
+A second instant-miss hazard (same shape as Mountains' lightning:
+`endFlight(false)` if the pony is inside the zone while active), but
+themed and triggered differently. A lava column (`lavaX`, same
+relocate-relative-to-pony pattern) rises from the ground and is only
+dangerous within `LAVA_HEIGHT` (160px) of the ground -- `p.y > groundY -
+LAVA_HEIGHT`, not any altitude the way lightning's `p.y < groundY` is.
+Flying high through Caves dodges it entirely, which reads as intentional
+("fly over the lava") rather than arbitrary. Drawn as a gradient rect
+(`drawLava()`, orange-to-red) rising from the ground at `lavaX` while
+`lavaActive`. `sfxLava()` is a low sawtooth rumble, distinct from
+`sfxThunder()`'s higher-pitched crack.
+
+Both verified the same way as the Mountains/City fix: a temporary debug
+hook forcing the timer to near-zero and the pony into a flight with a
+known velocity, confirming the gust's `vy` kick and the lava's
+`endFlight(false)` both fire when the pony is in range; removed before
+commit.
+
 **Byte budget check** (measured by building actual past commits, not
 guessed): a simple procedural parallax layer (silhouette tiling, no
 sprites) costs roughly **80-150 bytes zipped** each; a location built from
 2-3 such layers costs **~250-450 bytes**. Stateful obstacles (particle/physics
 systems like the existing heart/poop bursts) cost more, roughly **350-400
-bytes** each based on the charge-pile feature. Rough total for the
-remaining 4 locations + their obstacles: **~3000-5000 bytes**. Current
-build is **4109 bytes zipped** of the 13312 limit, so there's comfortable
-headroom (~9200 bytes) even on the pessimistic end of that estimate.
+bytes** each based on the charge-pile feature. All 4 non-Heavens obstacles
+are now implemented; current build is **~7000 bytes zipped** of the 13312
+limit, still comfortable headroom (~6300 bytes) for anything left.
 
 ## 12. Start screen (2026-08-24)
 
@@ -596,11 +628,11 @@ button.
 
 ## 13. Open questions for the next session
 
-- Level advance (3 hits, blind aim after level 1) is implemented; still
-  open: per-location target distance/difficulty tuning once locations 2-5
-  actually exist (right now every level past 1 uses the same blind-aim
-  distance formula, location is visual only so far), and whether obstacles
-  stack/reappear across later levels or stay one-per-location
+- Level advance (3 hits, blind aim after level 1) is implemented; all 4
+  non-Heavens obstacles are now implemented too (resolved: they don't
+  stack/reappear, each location keeps exactly its one type). Still open:
+  per-location target distance/difficulty tuning (every level past 1 uses
+  the same blind-aim distance formula regardless of location/obstacle)
 - Do we need progress persistence (localStorage) in the first version, or is
   clearing all levels in a single session without saving enough?
 - What happens after the last level (loop back to the first, an "end"
