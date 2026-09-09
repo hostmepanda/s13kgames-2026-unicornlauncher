@@ -72,6 +72,25 @@ Rainbow Elevator.
   the pile's current fill height, for as long as the aim is held --
   including well past the cap, since the pile itself can't visually convey
   "still pouring in" once it stops growing.
+- **Revision 3 (2026-09-10, user: "выглядит не очень," wants the cartoon
+  "unicorn riding a solid rainbow" reference, in the game's own blocky
+  pixel-art style rather than the reference's smooth curves, applied to
+  both charging *and* flight)**: replaced the ball pit with a **solid
+  striped rainbow ribbon**. `RIBBON_SPINE` is a fixed wavy path (built once
+  at module load, a sine-wave sway from the ground up to `NECK_H`);
+  `drawChargePile()` still reveals a growing prefix of it exactly as the
+  ball pit did (same `aimHoldTime`/`FILL_TIME` timing, same cap logic), but
+  hands the revealed points to a new `drawRibbon(points, thickness)` that
+  draws all 7 ROYGBIV bands as parallel perpendicular-offset strokes along
+  the path -- a flat, striped ribbon instead of a pile of separate shapes.
+  `drawTrail()` (Phase 3 below) got the same band-offset treatment so the
+  flight trail is now the same solid ribbon instead of a single
+  cycling-color line -- the pony visibly "rides" a rainbow exactly like the
+  reference, just rendered as flat pixel-art stripes instead of smooth
+  cartoon curves, consistent with the rest of the game's look. Both share
+  the perpendicular-offset technique but stayed as two separate functions
+  since `drawTrail()` needs a per-segment taper (alpha/width) `drawRibbon()`
+  doesn't.
 - Throw angle is clamped to a sane range (-0.92π to -0.08π, i.e. almost
   straight up to almost horizontal-forward, never backward/down)
 - Too short a gesture (< 8% of max radius) — aiming is cancelled, nothing
@@ -95,10 +114,11 @@ Rainbow Elevator.
 - Releasing the finger converts the accumulated power into launch speed:
   `speed = BASE_SPEED + power * POWER_MULT` (600 + power*900)
 - Initial vx/vy are computed from angle and speed
-- The ball pit bursts outward like a firework on release: however many
-  balls had actually been revealed (`fillFrac` of `BALL_SLOTS`, not a flat
-  count) scatter from their resting spots, reusing the same particle
-  array/physics as the heart bursts (`type:'ball'`, `drawBallShape()`)
+- The rainbow ribbon bursts into confetti on release: however much of
+  `RIBBON_SPINE` had actually been revealed (`fillFrac`, not a flat count)
+  scatters as small blocky chips (`type:'confetti'`, `drawConfettiShape()`,
+  each with a fixed random `rot` set at spawn so they don't jitter frame to
+  frame), reusing the same particle array/physics as the heart bursts
 - From there it's ballistics: gravity constantly pulls down (G=1400 px/s²)
 
 ### Phase 3 — Flight (with correction)
@@ -109,9 +129,13 @@ Rainbow Elevator.
   the game purely random)
 - The camera follows the unicorn horizontally (the world scrolls, the unicorn
   is held at roughly 30% of screen width from the left edge)
-- A rainbow trail follows the unicorn (semi-transparent trail from position
-  history, colors cycled from the ROYGBIV palette), thick as the body right
-  behind the pony and tapering thinner toward the older/faded end
+- A solid multi-band rainbow ribbon follows the unicorn (`drawTrail()`, all
+  7 ROYGBIV bands drawn as parallel perpendicular-offset strokes per
+  segment along `state.trail`'s position history -- see Phase 1's revision
+  3 above), thick as the body right behind the pony and tapering
+  thinner/fainter toward the older end. Originally a single cycling-color
+  line; upgraded alongside the charge-up ribbon so the pony visibly rides
+  one continuous rainbow from charge-up through flight.
 
 ### Phase 4 — Result
 - **Hitting the target**: history of this check, in order --

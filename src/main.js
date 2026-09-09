@@ -26,26 +26,23 @@ const MAX_FLAPS = 3;
 // below so the collision shape actually follows the visible sprite.
 const PONY_NOSE_LX = 91, PONY_NOSE_LY = -68;
 
-// Charge-up "ball pit": while holding the aim, rainbow balls pour in and
-// stack up in front of the pony, filling over FILL_TIME seconds up to
+// Charge-up rainbow ribbon: while holding the aim, a solid striped ribbon
+// coils up in front of the pony, filling over FILL_TIME seconds up to
 // NECK_H (matching the sprite's own neck height -- see PONY_NOSE_LY above)
-// and no further, no matter how long the hold continues. BALL_SLOTS is a
-// fixed pyramid of resting spots (bottom-heavy, narrowing toward the top)
-// built once; drawChargePile() just reveals a prefix of it based on
-// elapsed hold time, so already-placed balls never move or reshuffle.
+// and no further, no matter how long the hold continues -- riding a
+// rainbow like the cartoon-unicorn reference, not a stack of separate
+// dots. RIBBON_SPINE is a fixed wavy path (built once) from the ground up
+// to NECK_H; drawChargePile() just reveals a growing prefix of it based on
+// elapsed hold time, so the already-drawn part never moves or reshuffles.
 const FILL_TIME = 7;
 const NECK_H = 52;
-const BALL_D = 13;
-const BALL_SLOTS = (() => {
-  const rowH = 10, rows = Math.round(NECK_H / rowH) + 1;
-  const slots = [];
-  for (let r = 0; r < rows; r++) {
-    const count = Math.max(1, 4 - Math.floor(r * 0.7));
-    for (let c = 0; c < count; c++) {
-      slots.push({ dx: (c - (count - 1) / 2) * (BALL_D - 2), dy: -r * rowH, seed: r * 7 + c });
-    }
+const RIBBON_SPINE = (() => {
+  const steps = 14, pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    pts.push({ x: Math.sin(t * Math.PI * 2.2) * 10, y: -t * NECK_H });
   }
-  return slots;
+  return pts;
 })();
 
 // Closest distance from point (px,py) to the segment (ax,ay)-(bx,by).
@@ -468,20 +465,21 @@ function launch() {
   state.aimActive = false;
   startWindSound();
 
-  // the ball pit (drawChargePile, same anchor) bursts outward like a
-  // firework on release -- however many balls had actually been revealed
-  // (fillFrac of BALL_SLOTS), not just a flat count from power alone
+  // the charge ribbon (drawChargePile, same anchor) bursts into rainbow
+  // confetti on release -- however much of RIBBON_SPINE had actually been
+  // revealed (fillFrac), not just a flat count from power alone
   const fillFrac = Math.min(1, state.aimHoldTime / FILL_TIME);
-  const revealed = Math.max(1, Math.round(fillFrac * BALL_SLOTS.length));
+  const revealed = Math.max(2, Math.round(fillFrac * RIBBON_SPINE.length));
   for (let i = 0; i < revealed; i++) {
-    const s = BALL_SLOTS[i];
+    const s = RIBBON_SPINE[i];
     const a = Math.random() * Math.PI * 2;
     const sp = 100 + Math.random() * 220;
     state.hearts.push({
-      x: state.pony.x + 6 + s.dx, y: groundY + s.dy,
+      x: state.pony.x + 6 + s.x, y: groundY + s.y,
       vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
-      life: 0.9, age: 0, small: false, type: 'ball',
-      color: stops[s.seed % stops.length],
+      life: 0.9, age: 0, small: false, type: 'confetti',
+      rot: (Math.random() - 0.5) * 2,
+      color: stops[i % stops.length],
     });
   }
 }
@@ -877,20 +875,62 @@ function drawTarget() {
   ctx.restore();
 }
 
+// Flight trail: a solid multi-band rainbow ribbon (not a single cycling-
+// color line) following state.trail, so the pony visibly rides a rainbow
+// the way the cartoon reference does -- each segment draws all 7 ROYGBIV
+// bands side by side (perpendicular offsets), tapering thinner/fainter
+// toward the old end same as before.
 function drawTrail() {
   if (state.trail.length < 2) return;
-  ctx.lineCap = 'round';
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const bands = stops.length;
   for (let i = 1; i < state.trail.length; i++) {
     const a = state.trail[i - 1], b = state.trail[i];
-    const c = stops[i % stops.length];
-    ctx.strokeStyle = c;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;
     const tail = i / state.trail.length; // 0 at the old end .. 1 near the pony
     ctx.globalAlpha = 0.15 + 0.55 * tail;
-    ctx.lineWidth = 6 + 22 * tail; // thick as the body right behind the pony
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    const totalW = 6 + 22 * tail; // thick as the body right behind the pony
+    const bw = totalW / bands;
+    for (let s = 0; s < bands; s++) {
+      const off = (s - (bands - 1) / 2) * bw;
+      ctx.strokeStyle = stops[s];
+      ctx.lineWidth = bw + 1;
+      ctx.beginPath();
+      ctx.moveTo(a.x + nx * off, a.y + ny * off);
+      ctx.lineTo(b.x + nx * off, b.y + ny * off);
+      ctx.stroke();
+    }
   }
   ctx.globalAlpha = 1;
-  ctx.lineCap = 'butt';
+  ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+}
+
+// Generic blocky rainbow ribbon along a fixed polyline (already in world
+// coords) -- same band-offset technique as drawTrail above but for a
+// static, non-tapering path. Used by the charge-up pile.
+function drawRibbon(points, thickness) {
+  if (points.length < 2) return;
+  const bands = stops.length, bw = thickness / bands;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let b = 0; b < bands; b++) {
+    const off = (b - (bands - 1) / 2) * bw;
+    ctx.strokeStyle = stops[b];
+    ctx.lineWidth = bw + 1;
+    ctx.beginPath();
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const prev = points[Math.max(0, i - 1)], next = points[Math.min(points.length - 1, i + 1)];
+      const dx = next.x - prev.x, dy = next.y - prev.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len, ny = dx / len;
+      const x = p.x + nx * off, y = p.y + ny * off;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
 }
 
 function drawHearts() {
@@ -900,8 +940,9 @@ function drawHearts() {
     ctx.save();
     ctx.globalAlpha = 1 - t;
     ctx.translate(h.x, h.y);
+    if (h.rot) ctx.rotate(h.rot);
     const s = h.small ? 6 : 11;
-    if (h.type === 'ball') drawBallShape(s, h.color);
+    if (h.type === 'confetti') drawConfettiShape(s, h.color);
     else if (h.type === 'spark') drawSparkShape(s, h.color);
     else drawHeartShape(s);
     ctx.restore();
@@ -915,16 +956,13 @@ function drawHeartShape(s) {
   ctx.bezierCurveTo(s * 1.6, s * 0.5, s, -s * 0.6, 0, s * 0.3);
   ctx.fill();
 }
-// Shiny rainbow ball: dark outline pass (same inflate-then-fill trick
-// pony.js uses) plus a glossy highlight, used for both the charge pile and
-// its release burst.
-function drawBallShape(r, color) {
+// Small blocky confetti chip (outline+fill, matching the pony's own pixel-
+// art rects) for the ribbon's release burst.
+function drawConfettiShape(s, color) {
   ctx.fillStyle = '#2a2a3a';
-  ctx.beginPath(); ctx.arc(0, 0, r + 1.4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(-s * 0.68, -s * 0.52, s * 1.36, s * 1.04);
   ctx.fillStyle = color;
-  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.beginPath(); ctx.ellipse(-r * 0.32, -r * 0.35, r * 0.3, r * 0.2, -0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(-s * 0.55, -s * 0.4, s * 1.1, s * 0.8);
 }
 
 // Tiny plus-shaped glint for the firework sparkle particles.
@@ -937,26 +975,22 @@ function drawSparkShape(s, color) {
   ctx.stroke();
 }
 
-// Charge pile: a ball pit that fills in while aiming -- reveals a growing
-// prefix of the fixed BALL_SLOTS pyramid based on state.aimHoldTime, capped
-// at FILL_TIME seconds (further holding just keeps the firework sparkles
-// going at the capped height, see updateFirework -- user: "заполняет
-// единорога до горла и продолжает наливать, но куча выше горла не
-// заполняется"). Drawn *after* the pony (see render()) so it visibly
-// buries the lower body as it fills instead of sitting behind it.
+// Charge pile: a solid rainbow ribbon that coils up while aiming -- reveals
+// a growing prefix of the fixed RIBBON_SPINE path based on
+// state.aimHoldTime, capped at FILL_TIME seconds (further holding just
+// keeps the firework sparkles going at the capped height, see
+// updateFirework -- user: "заполняет единорога до горла и продолжает
+// наливать, но куча выше горла не заполняется", then later: "хочу что-то
+// вроде [cartoon unicorn riding a rainbow]"). Drawn *after* the pony (see
+// render()) so it visibly buries the lower body as it fills instead of
+// sitting behind it.
 function drawChargePile() {
   if (state.mode !== 'aim' || !state.aimActive) return;
   const fillFrac = Math.min(1, state.aimHoldTime / FILL_TIME);
-  const revealed = Math.max(1, Math.round(fillFrac * BALL_SLOTS.length));
+  const n = Math.max(2, Math.round(fillFrac * RIBBON_SPINE.length));
   const baseX = state.pony.x + 6, baseY = groundY;
-  for (let i = 0; i < revealed; i++) {
-    const s = BALL_SLOTS[i];
-    const bob = Math.sin(animT * 4 + s.seed) * 1.2;
-    ctx.save();
-    ctx.translate(baseX + s.dx, baseY + s.dy + bob);
-    drawBallShape(BALL_D / 2, stops[s.seed % stops.length]);
-    ctx.restore();
-  }
+  const pts = RIBBON_SPINE.slice(0, n).map(p => ({ x: baseX + p.x, y: baseY + p.y }));
+  drawRibbon(pts, 16);
 }
 
 // Start-screen illustration: a hand pulling a demo pony back, plus a dashed
