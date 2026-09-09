@@ -418,14 +418,16 @@ function launch() {
   state.aimActive = false;
   startWindSound();
 
-  // the charge pile scatters into rainbow poops on release
-  const pileX = state.pony.x - 34, pileY = groundY;
-  const n = 8 + Math.round(state.power * 10);
+  // the charge pile (drawChargePile's mound, same anchor) scatters into
+  // rainbow poops on release -- more of them at high power since the mound
+  // itself got taller/wider, not just a flat 8-18 regardless of charge
+  const pileX = state.pony.x + 6, pileY = groundY;
+  const n = 10 + Math.round(state.power * 16);
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2;
     const sp = 100 + Math.random() * 220;
     state.hearts.push({
-      x: pileX, y: pileY,
+      x: pileX, y: pileY - Math.random() * 40 * state.power,
       vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
       life: 0.9, age: 0, small: false, type: 'poop',
       color: stops[i % stops.length],
@@ -856,27 +858,50 @@ function drawHeartShape(s) {
   ctx.bezierCurveTo(s * 1.6, s * 0.5, s, -s * 0.6, 0, s * 0.3);
   ctx.fill();
 }
+// Cartoon poop swirl: a dark outline pass (same inflate-then-fill trick
+// pony.js uses) under the colored swirl, plus a tiny highlight, so it reads
+// clearly as poop rather than an abstract stack of ellipses regardless of
+// which rainbow color it's filled with.
 function drawPoopShape(s, color) {
+  ctx.fillStyle = '#3a2a1a';
+  ctx.beginPath(); ctx.ellipse(0, s * 0.6, s * 0.98, s * 0.58, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0, s * 0.78, s * 0.53, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, -s * 0.55, s * 0.53, s * 0.43, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.ellipse(0, s * 0.6, s * 0.9, s * 0.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(0, 0, s * 0.7, s * 0.45, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(0, -s * 0.55, s * 0.45, s * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath(); ctx.ellipse(-s * 0.15, -s * 0.65, s * 0.13, s * 0.08, 0.5, 0, Math.PI * 2); ctx.fill();
 }
 
-// charge pile: builds up under the tail while aiming, scatters on release
+// Charge pile: a mound of poop swirls that piles up under the pony while
+// aiming and scatters on release -- deliberately drawn *after* the pony
+// (see render()) and centered on its anchor rather than off to the side,
+// so at high power it visibly buries the pony up to about the neck instead
+// of just sitting as a small stack near the tail (user: "чтобы они
+// засыпали единорога по горло, пока юзер держит поинтер"). Widest at the
+// base (multiple side-by-side blobs) and narrows to a single column near
+// the top, so it reads as a mound rather than a thin pole.
 function drawChargePile() {
   if (state.mode !== 'aim' || !state.aimActive) return;
-  const dist = Math.min(Math.hypot(state.aimDX, state.aimDY), Math.min(W, H) * 0.28);
-  const pow = dist / (Math.min(W, H) * 0.28);
+  const MAXD = Math.min(W, H) * 0.28;
+  const dist = Math.min(Math.hypot(state.aimDX, state.aimDY), MAXD);
+  const pow = dist / MAXD;
   if (pow <= 0) return;
-  const px = state.pony.x - 34, py = groundY;
-  const n = Math.max(1, Math.ceil(pow * 6));
-  for (let i = 0; i < n; i++) {
-    const w = 15 - i * 1.4;
-    ctx.fillStyle = stops[i % stops.length];
-    ctx.beginPath();
-    ctx.ellipse(px, py - i * 6, Math.max(w, 4), 6, 0, 0, Math.PI * 2);
-    ctx.fill();
+  const baseX = state.pony.x + 6;
+  const layers = Math.max(1, Math.ceil(pow * 8));
+  for (let i = 0; i < layers; i++) {
+    const y = groundY - i * 7;
+    const blobs = i < 2 ? 3 : i < 5 ? 2 : 1;
+    const spread = 16;
+    for (let b = 0; b < blobs; b++) {
+      const bx = baseX + (blobs === 1 ? 0 : (b - (blobs - 1) / 2) * spread);
+      ctx.save();
+      ctx.translate(bx, y);
+      drawPoopShape(Math.max(9, 15 - i * 0.7), stops[(i + b) % stops.length]);
+      ctx.restore();
+    }
   }
 }
 
@@ -1085,7 +1110,6 @@ function render(dt) {
   drawTarget();
   drawTrail();
   drawHearts();
-  drawChargePile();
   if (introVisible) {
     // hide the real (idle, off to the side) pony while the intro's own demo
     // pony is on screen -- two unicorns at once read as confusing, not helpful
@@ -1100,6 +1124,9 @@ function render(dt) {
     // 'aim' (reset in resetLaunch()), so this needs no special-casing.
     drawPony(ctx, state.pony.x, state.pony.y, state.pony.rot, animT);
   }
+  // drawn *after* the pony so a tall pile visibly buries it, not just sits
+  // behind it
+  drawChargePile();
   ctx.restore();
 
   // screen-space flash from a lightning strike, on top of everything

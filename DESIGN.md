@@ -43,10 +43,23 @@ Rainbow Elevator.
   relative to the fixed anchor, not the touch start
 - While held — a power indicator grows (a linear bar at the bottom of the
   screen with a rainbow gradient fill)
-- Also while held — a rainbow charge pile builds up under the unicorn's
-  tail, growing taller with power (`drawChargePile()` in `src/main.js`,
+- Also while held — a rainbow poop mound builds up under the unicorn,
+  growing taller/wider with power (`drawChargePile()` in `src/main.js`,
   reusing the live drag-vector power calculation rather than `state.power`,
   which is only set on release)
+- **Revision (2026-09-09, user: make the effects "супер красивыми," and
+  specifically the pile should look more like actual poop and bury the
+  pony up to the neck while charging)**: `drawPoopShape()` (shared with the
+  release-burst particles below) got a dark outline pass plus a small
+  highlight, same inflate-then-fill trick `pony.js` uses, so it reads as a
+  cartoon poop swirl regardless of which rainbow color fills it, not just
+  an abstract stack of ellipses. `drawChargePile()` itself changed from a
+  short single-column stack near the tail to a mound: wide at the base
+  (several side-by-side poop blobs) narrowing to a single column near the
+  top, growing up to ~8 layers (~56px, roughly the sprite's own neck
+  height) at full power. It's also now drawn *after* the pony in `render()`
+  instead of before, so the mound visibly occludes/buries the lower body as
+  it grows rather than sitting behind it doing nothing to the silhouette.
 - Throw angle is clamped to a sane range (-0.92π to -0.08π, i.e. almost
   straight up to almost horizontal-forward, never backward/down)
 - Too short a gesture (< 8% of max radius) — aiming is cancelled, nothing
@@ -70,10 +83,10 @@ Rainbow Elevator.
 - Releasing the finger converts the accumulated power into launch speed:
   `speed = BASE_SPEED + power * POWER_MULT` (600 + power*900)
 - Initial vx/vy are computed from angle and speed
-- The charge pile scatters into 8-18 rainbow-colored poop particles (count
-  scales with power), reusing the same particle array/physics as the
-  heart bursts (tagged `type:'poop'`, rendered as a 3-blob stack instead of
-  a heart shape)
+- The charge pile scatters into 10-26 rainbow-colored poop particles (count
+  scales with power, bumped up from 8-18 alongside the taller mound),
+  reusing the same particle array/physics as the heart bursts (tagged
+  `type:'poop'`, rendered with `drawPoopShape()`'s outlined swirl)
 - From there it's ballistics: gravity constantly pulls down (G=1400 px/s²)
 
 ### Phase 3 — Flight (with correction)
