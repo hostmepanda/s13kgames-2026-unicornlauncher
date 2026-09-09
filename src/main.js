@@ -578,20 +578,28 @@ function drawCity() {
 // City's bird flock: drawn in world space (inside the pony's own
 // translate(-camX,0) block, not here) since birdX has to line up 1:1 with
 // the real physics world x used for the headwind check.
+// Flat filled pixel-art bird -- outline-then-fill rects, same technique
+// pony.js uses, rather than thin stroked chevrons (looked out of place next
+// to the unicorn's flat 2D style per user feedback).
+function drawBirdShape(bx, by, flap) {
+  ctx.fillStyle = '#20222c';
+  ctx.fillRect(bx - 5, by - 4, 10, 8);
+  ctx.fillRect(bx - 15, by - 4 - flap, 12, 6);
+  ctx.fillRect(bx + 3, by - 4 - flap, 12, 6);
+  ctx.fillStyle = '#5a5f6e';
+  ctx.fillRect(bx - 4, by - 3, 8, 6);
+  ctx.fillStyle = '#3f4350';
+  ctx.fillRect(bx - 14, by - 3 - flap, 10, 4);
+  ctx.fillRect(bx + 4, by - 3 - flap, 10, 4);
+}
 function drawBirds() {
   if (!isCity()) return;
   const y = groundY - 220;
-  ctx.strokeStyle = 'rgba(50,50,60,0.85)';
-  ctx.lineWidth = 3;
   for (let i = 0; i < 4; i++) {
     const bx = birdX + (i - 1.5) * 26;
     const by = y + Math.sin(animT * 2 + i) * 10 + i * 6;
     const flap = Math.sin(animT * 10 + i) * 6;
-    ctx.beginPath();
-    ctx.moveTo(bx - 10, by - flap);
-    ctx.lineTo(bx, by);
-    ctx.lineTo(bx + 10, by - flap);
-    ctx.stroke();
+    drawBirdShape(bx, by, flap);
   }
 }
 

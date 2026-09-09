@@ -455,12 +455,19 @@ wind gusts/volcano = still to design).
   a flat subtraction so it can't go negative/reverse the pony). A
   `birdInside` edge flag plays `sfxBird()` once on entry instead of every
   frame.
-- Drawn as 4 simple chevron ("bird") strokes clustered around `birdX`
-  with a per-bird flap animation from `animT` (`drawBirds()`), inside the
-  same `translate(-camX,0)` world-space block as the pony/target/lightning
-  bolt so it lines up with the real physics `birdX` used for the drag
-  check (the background city buildings themselves use a separate
-  screen-space parallax scheme via `drawLayer()`, which wouldn't match).
+- Drawn as 4 birds clustered around `birdX` with a per-bird flap animation
+  from `animT` (`drawBirds()`), inside the same `translate(-camX,0)`
+  world-space block as the pony/target/lightning bolt so it lines up with
+  the real physics `birdX` used for the drag check (the background city
+  buildings themselves use a separate screen-space parallax scheme via
+  `drawLayer()`, which wouldn't match).
+  - Revision (2026-09-09): the first version drew each bird as a plain
+    stroked chevron (thin outlined "V" line) — visually it read as
+    unrelated line art next to the unicorn's flat, filled pixel-art style.
+    `drawBirdShape()` now uses the same outline-then-fill rect technique
+    `pony.js` uses (dark outline rects, then flat-colored fill rects on
+    top) for a small blocky bird silhouette, so it reads as part of the
+    same visual language instead of a decoration bolted on.
 - QA note: same headless-Chrome rAF-throttling caveat as the lightning
   writeup above — verified via a temporary debug hook that force-set the
   pony's position/velocity near the flock and dumped `vx` across a few
