@@ -114,6 +114,13 @@ Rainbow Elevator.
   ribbon look from revision 3 -- that part was never the complaint, only
   the charge-up pile's shape kept missing on three different tries (poop
   mound → coiled ribbon → trailing ribbon) before landing back on circles.
+- **Revision 6 (2026-09-10, same day, user: "ты мне снова рисуешь шарики,
+  которые я забраковал")**: revision 5's circles still had the glossy
+  highlight from the original ball-pit (revision 2), i.e. still read as
+  "shiny balls," the exact look already moved past. `drawBallShape()`
+  dropped the highlight ellipse -- now just the outline pass + a flat
+  color fill, no gloss/volume, per an explicit direct request ("плоские
+  кружочки без блика/объёма").
 - Throw angle is clamped to a sane range (-0.92π to -0.08π, i.e. almost
   straight up to almost horizontal-forward, never backward/down)
 - Too short a gesture (< 8% of max radius) — aiming is cancelled, nothing

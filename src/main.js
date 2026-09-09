@@ -933,16 +933,16 @@ function drawHeartShape(s) {
   ctx.bezierCurveTo(s * 1.6, s * 0.5, s, -s * 0.6, 0, s * 0.3);
   ctx.fill();
 }
-// Shiny rainbow ball: dark outline pass (same inflate-then-fill trick
-// pony.js uses) plus a glossy highlight, used for both the charge pile and
-// its release burst.
+// Flat rainbow circle: dark outline pass (same inflate-then-fill trick
+// pony.js uses) plus a flat color fill, no gloss/highlight -- used for both
+// the charge pile and its release burst. Previously had a glossy highlight
+// (a "shiny ball" look); user asked for plain flat circles instead
+// (2026-09-10: "плоские кружочки без блика/объёма").
 function drawBallShape(r, color) {
   ctx.fillStyle = '#2a2a3a';
   ctx.beginPath(); ctx.arc(0, 0, r + 1.4, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.beginPath(); ctx.ellipse(-r * 0.32, -r * 0.35, r * 0.3, r * 0.2, -0.6, 0, Math.PI * 2); ctx.fill();
 }
 
 // Tiny plus-shaped glint for the firework sparkle particles.
