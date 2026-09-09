@@ -1,5 +1,5 @@
 import { drawPony } from './pony.js';
-import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, sfxThunder, startWindSound, updateWindSound, stopWindSound, startMusic, toggleMute } from './sound.js';
+import { sfxAim, sfxFlap, sfxHit, sfxLevelUp, sfxMiss, sfxBird, sfxThunder, startWindSound, updateWindSound, stopWindSound, startMusic, toggleMute } from './sound.js';
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -96,6 +96,37 @@ function updateWeather(dt) {
   if (lightningActive && state.mode === 'flight') {
     const p = state.pony;
     if (Math.abs(p.x - lightningX) < 42 && p.y < groundY) endFlight(false);
+  }
+}
+
+// City-only obstacle: a flock of birds sitting at a world x that relocates
+// every few seconds. Unlike lightning's instant miss, this is a headwind --
+// flying through the flock's zone bleeds off forward speed continuously
+// for as long as the pony is inside it, rather than ending the flight
+// outright (keeps the four locations' hazards each doing something
+// different: rain+lightning = instant-miss hazard, birds = drag,
+// wind gusts/volcano = still to design).
+function isCity() { return state.bgLevel % LOCATIONS.length === 2; }
+const BIRD_ZONE = 90; // half-width of the headwind zone, world px
+let birdX = 0, birdTimer = 1 + Math.random() * 2, birdInside = false;
+
+function updateBirds(dt) {
+  if (!isCity()) { birdInside = false; return; }
+  birdTimer -= dt;
+  if (birdTimer <= 0) {
+    birdX = state.originX + 150 + Math.random() * (TARGET_DIST_ACHIEVABLE_MAX - 200);
+    birdTimer = 4 + Math.random() * 3;
+  }
+  if (state.mode === 'flight') {
+    const p = state.pony;
+    const inside = Math.abs(p.x - birdX) < BIRD_ZONE && p.y < groundY;
+    if (inside) {
+      if (!birdInside) sfxBird();
+      p.vx -= p.vx * 1.4 * dt;
+    }
+    birdInside = inside;
+  } else {
+    birdInside = false;
   }
 }
 
@@ -332,6 +363,7 @@ function update(dt) {
   }
 
   updateWeather(dt);
+  updateBirds(dt);
 
   // hearts physics (always update, used in result burst + flap puffs)
   for (const h of state.hearts) {
@@ -516,6 +548,26 @@ function drawBuildingShape(x, baseY, h, color) {
 function drawCity() {
   drawLayer(0.18, 90, 140, 90, 4, (x, baseY, h) => drawBuildingShape(x, baseY, h, '#8f97ad'));
   drawLayer(0.40, 60, 110, 70, 4, (x, baseY, h) => drawBuildingShape(x, baseY, h, '#6d7690'));
+}
+
+// City's bird flock: drawn in world space (inside the pony's own
+// translate(-camX,0) block, not here) since birdX has to line up 1:1 with
+// the real physics world x used for the headwind check.
+function drawBirds() {
+  if (!isCity()) return;
+  const y = groundY - 220;
+  ctx.strokeStyle = 'rgba(50,50,60,0.85)';
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 4; i++) {
+    const bx = birdX + (i - 1.5) * 26;
+    const by = y + Math.sin(animT * 2 + i) * 10 + i * 6;
+    const flap = Math.sin(animT * 10 + i) * 6;
+    ctx.beginPath();
+    ctx.moveTo(bx - 10, by - flap);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(bx + 10, by - flap);
+    ctx.stroke();
+  }
 }
 
 // -- location 3: beach (sea swell + palm trees) --
@@ -804,6 +856,7 @@ function render(dt) {
   ctx.translate(-camX, 0);
   drawGround();
   drawLightningBolt();
+  drawBirds();
   drawTarget();
   drawTrail();
   drawHearts();

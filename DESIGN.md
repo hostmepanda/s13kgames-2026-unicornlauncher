@@ -351,8 +351,10 @@ the original easy→hard draft):
 | 4 | Beach | background built 2026-08-23 (palm trees, sea swell, sand ground) | wind gusts (sideways drift in flight) |
 | 5 | Caves | background built 2026-08-23 (ceiling stalactites, dark sky, rock ground), finale | volcano eruption (lava/underground) |
 
-All 5 backgrounds are visual-only so far — no per-location obstacles yet
-(those are still tracked separately, see section 8).
+Backgrounds are visual-only for Heavens/Beach/Caves so far — Mountains
+(rain+lightning) and City (birds) obstacles are implemented, see the
+Mountains write-up above and the City one right below it. Beach/Caves
+obstacles are still tracked separately (see section 8).
 
 **Difficulty ramps per full cycle** (2026-08-23): looping back to Heavens
 after Caves isn't a flat repeat. `placeTarget()` computes
@@ -420,6 +422,36 @@ user picked hazard):
   affected how the fix was verified (via a temporary `window.__dbg` hook
   with a `testHit()` that force-set the pony into the strike zone, and
   screenshots to pump frames), not the shipped code.
+
+### City: headwind birds (implemented 2026-09-09)
+
+Deliberately a different kind of hazard than Mountains' instant-miss
+lightning — the original plan already called these "headwind birds", i.e.
+drag rather than a hard fail, so each location's obstacle does something
+distinct (rain+lightning = instant-miss hazard, birds = continuous drag,
+wind gusts/volcano = still to design).
+
+- A single flock sits at a world x (`birdX`) that relocates every 4-7s
+  (`updateBirds(dt)` in `main.js`, called from `update()` right after
+  `updateWeather(dt)`), gated on `isCity()` (`state.bgLevel % 5 === 2`)
+  the same way Mountains' weather is gated on `isMountains()`.
+- While the pony is in flight and within `BIRD_ZONE` (90px either side of
+  `birdX`) and still airborne, its horizontal speed bleeds off
+  continuously (`p.vx -= p.vx * 1.4 * dt`, an exponential decay rather than
+  a flat subtraction so it can't go negative/reverse the pony). A
+  `birdInside` edge flag plays `sfxBird()` once on entry instead of every
+  frame.
+- Drawn as 4 simple chevron ("bird") strokes clustered around `birdX`
+  with a per-bird flap animation from `animT` (`drawBirds()`), inside the
+  same `translate(-camX,0)` world-space block as the pony/target/lightning
+  bolt so it lines up with the real physics `birdX` used for the drag
+  check (the background city buildings themselves use a separate
+  screen-space parallax scheme via `drawLayer()`, which wouldn't match).
+- QA note: same headless-Chrome rAF-throttling caveat as the lightning
+  writeup above — verified via a temporary debug hook that force-set the
+  pony's position/velocity near the flock and dumped `vx` across a few
+  forced repaints, confirming it decayed while inside the zone and stopped
+  once outside it, then removed before commit.
 
 **Byte budget check** (measured by building actual past commits, not
 guessed): a simple procedural parallax layer (silhouette tiling, no

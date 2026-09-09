@@ -45,6 +45,7 @@ export function sfxLevelUp() {
   setTimeout(() => tone(784, 0.22, 'sine', 0.22, 1046), 110);
 }
 export function sfxMiss() { tone(300, 0.3, 'sawtooth', 0.15, 90); }
+export function sfxBird() { tone(900, 0.08, 'square', 0.1, 700); }
 export function sfxThunder() {
   tone(90, 0.5, 'sawtooth', 0.25, 40);
   setTimeout(() => tone(180, 0.15, 'square', 0.15, 60), 60);
