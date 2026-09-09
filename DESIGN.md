@@ -89,31 +89,39 @@ Rainbow Elevator.
   behind the pony and tapering thinner toward the older/faded end
 
 ### Phase 4 — Result
-- **Hitting the target** (checked as `target.r + PONY_HIT_RADIUS` from the
-  pony's raw anchor point — an earlier version offset the check point
-  toward the body's visual center instead, which fixed misses near the
-  head but broke obvious hits near the legs/anchor, and drifted further off
-  as the sprite rotated in flight since the offset didn't rotate with it; a
-  rotation-independent radius fudge replaced it 2026-08-24). `PONY_HIT_RADIUS`
-  started at 55 but was tightened to 35 the same day: mathematically bounded
-  (max combined radius ~101px) so it could never be as far off as a report
-  made it look (likely a device-pixel-ratio screenshot-scale illusion — the
-  math is in CSS px, a mobile screenshot is often physical px), but 101px
-  read as "hit registers when clearly far away" against a ~46px cloud icon.
-  35 still comfortably covers reasonable body-overlap (verified: target near
-  the legs/anchor at a steep flight rotation still registers) without
-  feeling magnetic.
-  **Rendering bug, not a collision bug (found 2026-09-09, user report:
-  "единорог хитит облако реально не касаясь его")**: the collision math was
-  fine, but the result-screen render forced the pony's rotation to 0
-  (`state.mode === 'flight' ? state.pony.rot : 0`) instead of keeping its
-  actual rotation at the moment of impact. A hit at a steep flight angle
-  would freeze upright on the result screen, moving the visual horn/head
-  away from where the target actually was touched, reading as a false
-  positive even though the hitbox was correct the whole time. Fixed by
-  always passing `state.pony.rot` (already 0 during 'aim', reset in
-  `resetLaunch()`, so the ternary was pure liability, not doing anything
-  useful during 'aim').
+- **Hitting the target**: history of this check, in order --
+  1. A fixed offset toward the body's visual center: fixed misses near the
+     head but broke obvious hits near the legs/anchor, and drifted further
+     off as the sprite rotated since the offset didn't rotate with it.
+  2. A rotation-independent radius fudge from the raw anchor point
+     (2026-08-24), `target.r + PONY_HIT_RADIUS`. Started at 55, tightened
+     to 35 the same day (max combined radius ~101px → ~81px) since 55 read
+     as "hit registers when clearly far away" against a ~46px cloud icon.
+  3. **Rendering bug, not a collision bug (2026-09-09, user report:
+     "единорог хитит облако реально не касаясь его")**: the result-screen
+     render forced the pony's rotation to 0 instead of its actual rotation
+     at impact, so a steep-angle hit froze upright and visually moved the
+     horn/head away from the target -- the hitbox was fine, only the
+     frozen pose was wrong. Fixed by always using `state.pony.rot`.
+  4. **Still reported after (3) (2026-09-09, second screenshot, `tries: 14`
+     -- an experienced run, not a fluke)**: a single generous circle from
+     the anchor is inherently loose toward anything near the *legs* end
+     even when the visible body clearly doesn't reach the target -- the
+     anchor-radius model can't distinguish "target near the hooves" from
+     "target near the hooves but the rest of the body points away from
+     it." Replaced with a **capsule**: the segment from the anchor to the
+     sprite's approximate muzzle point (`PONY_NOSE_LX/LY = 91,-68`, read
+     off the muzzle-bump rect in `pony.js`'s `SHAPES`, rotated by the same
+     `rot*0.28` `drawPony` uses to tilt the sprite) via `distToSegment()`,
+     with a tighter `PONY_HIT_RADIUS = 22`. This covers legs-end and
+     head-end contact the way the anchor-only version did (verified: the
+     steep-rotation legs-near-target regression test from step 2 still
+     hits) without a same-size blind circle extending past whichever end
+     of the body isn't actually near the target. Verified with a battery
+     of synthetic scenarios (Node script mimicking the exact math, not
+     just eyeballing screenshots): the reported far-gap case now misses,
+     the old near-legs regression still hits, a target at the muzzle tip
+     hits, a target perpendicular to the body axis misses.
   → success, heart particles around the target, positive text feedback,
   and the level's hit counter (`level N · hits/3` in the HUD) increments.
   On the 3rd hit the level advances (`state.level++`, hits reset to 0,

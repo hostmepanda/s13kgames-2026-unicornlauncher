@@ -18,6 +18,20 @@ let groundY = 0;
 const G = 1400; // gravity px/s^2
 const FLAP_IMPULSE = 480;
 const MAX_FLAPS = 3;
+
+// Approximate local offset (pre-rotation, pre-scale) from the pony's
+// anchor to its muzzle tip, taken from the muzzle-bump rect in pony.js's
+// SHAPES ([22,-12,26,-10]) shifted by GROUND_Y and scaled by
+// CELL*PONY_SCALE (2*1.9=3.8) -- used by the target-hit capsule check
+// below so the collision shape actually follows the visible sprite.
+const PONY_NOSE_LX = 91, PONY_NOSE_LY = -68;
+
+// Closest distance from point (px,py) to the segment (ax,ay)-(bx,by).
+function distToSegment(px, py, ax, ay, bx, by) {
+  const abx = bx - ax, aby = by - ay;
+  const t = Math.max(0, Math.min(1, ((px - ax) * abx + (py - ay) * aby) / (abx * abx + aby * aby || 1)));
+  return Math.hypot(px - (ax + abx * t), py - (ay + aby * t));
+}
 const stops = ['#ff3b3b', '#ff9d3b', '#ffe23b', '#3bff6e', '#3bb3ff', '#5b3bff', '#c23bff'];
 
 const LEVEL_HITS_REQUIRED = 3;
@@ -431,22 +445,27 @@ function update(dt) {
     camX += (desiredCamX - camX) * Math.min(1, dt * 6);
     if (camX < 0) camX = 0;
 
-    // check target hit -- p.x/p.y is the sprite's anchor point (roughly the
-    // hooves), but the body/neck/horn extend well above and around it. A
-    // fixed offset toward the "body center" (tried previously) only moved
-    // the blind spot instead of fixing it: it caught hits near the head but
-    // missed obvious ones near the legs/anchor, and drifted further off as
-    // the sprite rotated in flight (the offset didn't rotate with it). A
-    // rotation-independent radius fudge from the anchor covers the whole
-    // body reliably instead. 55 (tried first) was mathematically bounded
-    // (target.r + 55 <= 101px) but read as "hit registers when clearly far
-    // away" -- generous relative to the ~46px cloud icon's own size, even
-    // though it could never be as far off as it looked in a screenshot
-    // (likely a device-pixel-ratio scale illusion: the screenshot was
-    // probably physical pixels, this radius is CSS px). Tightened so a hit
-    // reads as earned rather than magnetic.
-    const PONY_HIT_RADIUS = 35;
-    const dTgt = Math.hypot(p.x - state.target.x, p.y - state.target.y);
+    // check target hit -- p.x/p.y is only the sprite's anchor point
+    // (roughly the hooves); the visible body/neck/head/horn extend well
+    // forward and above it. History: a fixed offset toward the "body
+    // center" caught hits near the head but missed obvious ones near the
+    // legs/anchor, and drifted further off as the sprite rotated (the
+    // offset didn't rotate with it) -- replaced with a plain radius fudge
+    // from the anchor (35px, target.r + 35 <= 81px), which fixed both of
+    // those but was still reported as "hits without touching": a big
+    // circle from a single point (the hooves) is generous toward anything
+    // near the LEGS even when the visible body clearly doesn't reach that
+    // far (2026-09-09 report, screenshot showing a real gap). Replaced with
+    // a capsule: the segment from the anchor to the sprite's approximate
+    // nose/muzzle point (PONY_NOSE_LX/LY, matching pony.js's SHAPES data,
+    // rotated by the same rot*0.28 drawPony uses to tilt the sprite) plus a
+    // tighter radius -- covers legs-end and head-end genuinely touching
+    // the target without a same-size blind circle floating past the body.
+    const bodyAngle = p.rot * 0.28;
+    const noseX = p.x + PONY_NOSE_LX * Math.cos(bodyAngle) - PONY_NOSE_LY * Math.sin(bodyAngle);
+    const noseY = p.y + PONY_NOSE_LX * Math.sin(bodyAngle) + PONY_NOSE_LY * Math.cos(bodyAngle);
+    const PONY_HIT_RADIUS = 22;
+    const dTgt = distToSegment(state.target.x, state.target.y, p.x, p.y, noseX, noseY);
     if (dTgt < state.target.r + PONY_HIT_RADIUS) {
       endFlight(true);
     } else if (p.y > groundY + 20 || p.x < -60 || p.x > state.target.x + W) {
