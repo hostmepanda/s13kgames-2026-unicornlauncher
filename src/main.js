@@ -26,6 +26,28 @@ const MAX_FLAPS = 3;
 // below so the collision shape actually follows the visible sprite.
 const PONY_NOSE_LX = 91, PONY_NOSE_LY = -68;
 
+// Charge-up "ball pit": while holding the aim, rainbow balls pour in and
+// stack up in front of the pony, filling over FILL_TIME seconds up to
+// NECK_H (matching the sprite's own neck height -- see PONY_NOSE_LY above)
+// and no further, no matter how long the hold continues. BALL_SLOTS is a
+// fixed pyramid of resting spots (bottom-heavy, narrowing toward the top)
+// built once; drawChargePile() just reveals a prefix of it based on
+// elapsed hold time, so already-placed balls never move or reshuffle.
+const FILL_TIME = 7;
+const NECK_H = 52;
+const BALL_D = 13;
+const BALL_SLOTS = (() => {
+  const rowH = 10, rows = Math.round(NECK_H / rowH) + 1;
+  const slots = [];
+  for (let r = 0; r < rows; r++) {
+    const count = Math.max(1, 4 - Math.floor(r * 0.7));
+    for (let c = 0; c < count; c++) {
+      slots.push({ dx: (c - (count - 1) / 2) * (BALL_D - 2), dy: -r * rowH, seed: r * 7 + c });
+    }
+  }
+  return slots;
+})();
+
 // Closest distance from point (px,py) to the segment (ax,ay)-(bx,by).
 function distToSegment(px, py, ax, ay, bx, by) {
   const abx = bx - ax, aby = by - ay;
@@ -56,6 +78,7 @@ const state = {
   aimActive: false,
   aimIsMouse: false, // true if this aim gesture is a mouse drag (see computeAim)
   aimDX: 0, aimDY: 0, // drag vector, used for power+angle
+  aimHoldTime: 0, // seconds the current aim gesture has been held (see drawChargePile)
   power: 0, // 0..1
   angle: -Math.PI / 4,
   pony: { x: 0, y: 0, vx: 0, vy: 0, rot: 0 },
@@ -230,6 +253,31 @@ function updateVolcano(dt) {
   }
 }
 
+// Firework sparkle: a few glints pop off the ball pile's current fill
+// level every ~0.12s while charging, reusing the heart/poop particle array
+// (type 'spark', drawn by drawSparkShape). Keeps firing at the capped
+// (NECK_H) height once the pile is full -- reads as "still pouring in, but
+// it doesn't pile any higher," the firework feel the pile itself can't
+// convey once it stops growing.
+let fireworkTimer = 0;
+function updateFirework(dt) {
+  fireworkTimer -= dt;
+  if (fireworkTimer > 0) return;
+  fireworkTimer = 0.12;
+  const fillFrac = Math.min(1, state.aimHoldTime / FILL_TIME);
+  const topY = groundY - fillFrac * NECK_H;
+  for (let i = 0; i < 2; i++) {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.6;
+    const sp = 60 + Math.random() * 100;
+    state.hearts.push({
+      x: state.pony.x + 6 + (Math.random() - 0.5) * 20, y: topY,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+      life: 0.35, age: 0, small: true, type: 'spark',
+      color: stops[Math.floor(Math.random() * stops.length)],
+    });
+  }
+}
+
 function resetLaunch() {
   state.mode = 'aim';
   state.bgLevel = state.level;
@@ -237,6 +285,7 @@ function resetLaunch() {
   state.originY = groundY;
   state.aimActive = false;
   state.aimDX = 0; state.aimDY = 0;
+  state.aimHoldTime = 0;
   state.power = 0;
   state.pony.x = state.originX; state.pony.y = state.originY;
   state.pony.vx = 0; state.pony.vy = 0; state.pony.rot = 0;
@@ -366,6 +415,7 @@ cv.addEventListener('pointerdown', e => {
     pointerId = e.pointerId;
     state.aimActive = true;
     state.aimIsMouse = e.pointerType === 'mouse';
+    state.aimHoldTime = 0;
     [state.aimDX, state.aimDY] = aimVectorFrom(e);
     sfxAim();
   } else if (state.mode === 'flight') {
@@ -418,19 +468,20 @@ function launch() {
   state.aimActive = false;
   startWindSound();
 
-  // the charge pile (drawChargePile's mound, same anchor) scatters into
-  // rainbow poops on release -- more of them at high power since the mound
-  // itself got taller/wider, not just a flat 8-18 regardless of charge
-  const pileX = state.pony.x + 6, pileY = groundY;
-  const n = 10 + Math.round(state.power * 16);
-  for (let i = 0; i < n; i++) {
+  // the ball pit (drawChargePile, same anchor) bursts outward like a
+  // firework on release -- however many balls had actually been revealed
+  // (fillFrac of BALL_SLOTS), not just a flat count from power alone
+  const fillFrac = Math.min(1, state.aimHoldTime / FILL_TIME);
+  const revealed = Math.max(1, Math.round(fillFrac * BALL_SLOTS.length));
+  for (let i = 0; i < revealed; i++) {
+    const s = BALL_SLOTS[i];
     const a = Math.random() * Math.PI * 2;
     const sp = 100 + Math.random() * 220;
     state.hearts.push({
-      x: pileX, y: pileY - Math.random() * 40 * state.power,
+      x: state.pony.x + 6 + s.dx, y: groundY + s.dy,
       vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
-      life: 0.9, age: 0, small: false, type: 'poop',
-      color: stops[i % stops.length],
+      life: 0.9, age: 0, small: false, type: 'ball',
+      color: stops[s.seed % stops.length],
     });
   }
 }
@@ -438,6 +489,11 @@ function launch() {
 // ---------- update ----------
 let last = performance.now();
 function update(dt) {
+  if (state.mode === 'aim' && state.aimActive) {
+    state.aimHoldTime += dt;
+    updateFirework(dt);
+  }
+
   if (state.mode === 'flight') {
     const p = state.pony;
     p.vy += G * dt;
@@ -845,7 +901,8 @@ function drawHearts() {
     ctx.globalAlpha = 1 - t;
     ctx.translate(h.x, h.y);
     const s = h.small ? 6 : 11;
-    if (h.type === 'poop') drawPoopShape(s, h.color);
+    if (h.type === 'ball') drawBallShape(s, h.color);
+    else if (h.type === 'spark') drawSparkShape(s, h.color);
     else drawHeartShape(s);
     ctx.restore();
   }
@@ -858,50 +915,47 @@ function drawHeartShape(s) {
   ctx.bezierCurveTo(s * 1.6, s * 0.5, s, -s * 0.6, 0, s * 0.3);
   ctx.fill();
 }
-// Cartoon poop swirl: a dark outline pass (same inflate-then-fill trick
-// pony.js uses) under the colored swirl, plus a tiny highlight, so it reads
-// clearly as poop rather than an abstract stack of ellipses regardless of
-// which rainbow color it's filled with.
-function drawPoopShape(s, color) {
-  ctx.fillStyle = '#3a2a1a';
-  ctx.beginPath(); ctx.ellipse(0, s * 0.6, s * 0.98, s * 0.58, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(0, 0, s * 0.78, s * 0.53, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(0, -s * 0.55, s * 0.53, s * 0.43, 0, 0, Math.PI * 2); ctx.fill();
+// Shiny rainbow ball: dark outline pass (same inflate-then-fill trick
+// pony.js uses) plus a glossy highlight, used for both the charge pile and
+// its release burst.
+function drawBallShape(r, color) {
+  ctx.fillStyle = '#2a2a3a';
+  ctx.beginPath(); ctx.arc(0, 0, r + 1.4, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = color;
-  ctx.beginPath(); ctx.ellipse(0, s * 0.6, s * 0.9, s * 0.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(0, 0, s * 0.7, s * 0.45, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(0, -s * 0.55, s * 0.45, s * 0.35, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.beginPath(); ctx.ellipse(-s * 0.15, -s * 0.65, s * 0.13, s * 0.08, 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.beginPath(); ctx.ellipse(-r * 0.32, -r * 0.35, r * 0.3, r * 0.2, -0.6, 0, Math.PI * 2); ctx.fill();
 }
 
-// Charge pile: a mound of poop swirls that piles up under the pony while
-// aiming and scatters on release -- deliberately drawn *after* the pony
-// (see render()) and centered on its anchor rather than off to the side,
-// so at high power it visibly buries the pony up to about the neck instead
-// of just sitting as a small stack near the tail (user: "чтобы они
-// засыпали единорога по горло, пока юзер держит поинтер"). Widest at the
-// base (multiple side-by-side blobs) and narrows to a single column near
-// the top, so it reads as a mound rather than a thin pole.
+// Tiny plus-shaped glint for the firework sparkle particles.
+function drawSparkShape(s, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-s, 0); ctx.lineTo(s, 0);
+  ctx.moveTo(0, -s); ctx.lineTo(0, s);
+  ctx.stroke();
+}
+
+// Charge pile: a ball pit that fills in while aiming -- reveals a growing
+// prefix of the fixed BALL_SLOTS pyramid based on state.aimHoldTime, capped
+// at FILL_TIME seconds (further holding just keeps the firework sparkles
+// going at the capped height, see updateFirework -- user: "заполняет
+// единорога до горла и продолжает наливать, но куча выше горла не
+// заполняется"). Drawn *after* the pony (see render()) so it visibly
+// buries the lower body as it fills instead of sitting behind it.
 function drawChargePile() {
   if (state.mode !== 'aim' || !state.aimActive) return;
-  const MAXD = Math.min(W, H) * 0.28;
-  const dist = Math.min(Math.hypot(state.aimDX, state.aimDY), MAXD);
-  const pow = dist / MAXD;
-  if (pow <= 0) return;
-  const baseX = state.pony.x + 6;
-  const layers = Math.max(1, Math.ceil(pow * 8));
-  for (let i = 0; i < layers; i++) {
-    const y = groundY - i * 7;
-    const blobs = i < 2 ? 3 : i < 5 ? 2 : 1;
-    const spread = 16;
-    for (let b = 0; b < blobs; b++) {
-      const bx = baseX + (blobs === 1 ? 0 : (b - (blobs - 1) / 2) * spread);
-      ctx.save();
-      ctx.translate(bx, y);
-      drawPoopShape(Math.max(9, 15 - i * 0.7), stops[(i + b) % stops.length]);
-      ctx.restore();
-    }
+  const fillFrac = Math.min(1, state.aimHoldTime / FILL_TIME);
+  const revealed = Math.max(1, Math.round(fillFrac * BALL_SLOTS.length));
+  const baseX = state.pony.x + 6, baseY = groundY;
+  for (let i = 0; i < revealed; i++) {
+    const s = BALL_SLOTS[i];
+    const bob = Math.sin(animT * 4 + s.seed) * 1.2;
+    ctx.save();
+    ctx.translate(baseX + s.dx, baseY + s.dy + bob);
+    drawBallShape(BALL_D / 2, stops[s.seed % stops.length]);
+    ctx.restore();
   }
 }
 

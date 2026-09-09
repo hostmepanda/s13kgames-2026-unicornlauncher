@@ -43,23 +43,35 @@ Rainbow Elevator.
   relative to the fixed anchor, not the touch start
 - While held — a power indicator grows (a linear bar at the bottom of the
   screen with a rainbow gradient fill)
-- Also while held — a rainbow poop mound builds up under the unicorn,
-  growing taller/wider with power (`drawChargePile()` in `src/main.js`,
-  reusing the live drag-vector power calculation rather than `state.power`,
-  which is only set on release)
-- **Revision (2026-09-09, user: make the effects "супер красивыми," and
-  specifically the pile should look more like actual poop and bury the
-  pony up to the neck while charging)**: `drawPoopShape()` (shared with the
-  release-burst particles below) got a dark outline pass plus a small
-  highlight, same inflate-then-fill trick `pony.js` uses, so it reads as a
-  cartoon poop swirl regardless of which rainbow color fills it, not just
-  an abstract stack of ellipses. `drawChargePile()` itself changed from a
-  short single-column stack near the tail to a mound: wide at the base
-  (several side-by-side poop blobs) narrowing to a single column near the
-  top, growing up to ~8 layers (~56px, roughly the sprite's own neck
-  height) at full power. It's also now drawn *after* the pony in `render()`
-  instead of before, so the mound visibly occludes/buries the lower body as
-  it grows rather than sitting behind it doing nothing to the silhouette.
+- Also while held — a "ball pit" builds up under the unicorn (see revision
+  below for the current design; originally a power-scaled poop mound)
+- **Revision 1 (2026-09-09, "супер красивыми," pile should look more like
+  actual poop and bury the pony up to the neck)**: a poop-swirl mound
+  (outline+fill+highlight, same trick `pony.js` uses), wide at the base and
+  narrowing toward the top, scaled by drag power.
+- **Revision 2 (2026-09-09, same day, user: "не не, давай сделаем что это
+  шарики" — make them balls instead, filling continuously over ~7s up to
+  the neck and no further, "похожее на типа феерверк")**: replaced the
+  poop mound with a **ball pit**, and switched the fill trigger from drag
+  *power* to hold *time* — `state.aimHoldTime` accumulates while
+  `state.mode === 'aim' && state.aimActive` (reset on each new aim
+  gesture), and `drawChargePile()` reveals a growing prefix of a fixed
+  pyramid of resting spots (`BALL_SLOTS`, built once at module load: rows
+  bottom-heavy, narrowing upward) based on `min(1, aimHoldTime /
+  FILL_TIME)` (`FILL_TIME = 7`). Height caps at `NECK_H = 52px` (matching
+  the sprite's own neck height, same anchor math as `PONY_NOSE_LX/LY`
+  above) regardless of how much longer the hold continues — already-placed
+  balls never move or reshuffle, so the pile visibly stops growing rather
+  than the mound's old power-based instant resize. `drawBallShape()` is the
+  same outline+fill+highlight trick, just a glossy sphere instead of a
+  poop swirl. Still drawn *after* the pony in `render()` (unchanged from
+  revision 1) so it occludes/buries the lower body as it fills.
+- The "фейерверк" (firework) feel once capped: `updateFirework()` spawns a
+  couple of small plus-shaped "spark" glints (`drawSparkShape()`, reusing
+  the heart/poop particle array with a new `type:'spark'`) every ~0.12s at
+  the pile's current fill height, for as long as the aim is held --
+  including well past the cap, since the pile itself can't visually convey
+  "still pouring in" once it stops growing.
 - Throw angle is clamped to a sane range (-0.92π to -0.08π, i.e. almost
   straight up to almost horizontal-forward, never backward/down)
 - Too short a gesture (< 8% of max radius) — aiming is cancelled, nothing
@@ -83,10 +95,10 @@ Rainbow Elevator.
 - Releasing the finger converts the accumulated power into launch speed:
   `speed = BASE_SPEED + power * POWER_MULT` (600 + power*900)
 - Initial vx/vy are computed from angle and speed
-- The charge pile scatters into 10-26 rainbow-colored poop particles (count
-  scales with power, bumped up from 8-18 alongside the taller mound),
-  reusing the same particle array/physics as the heart bursts (tagged
-  `type:'poop'`, rendered with `drawPoopShape()`'s outlined swirl)
+- The ball pit bursts outward like a firework on release: however many
+  balls had actually been revealed (`fillFrac` of `BALL_SLOTS`, not a flat
+  count) scatter from their resting spots, reusing the same particle
+  array/physics as the heart bursts (`type:'ball'`, `drawBallShape()`)
 - From there it's ballistics: gravity constantly pulls down (G=1400 px/s²)
 
 ### Phase 3 — Flight (with correction)
