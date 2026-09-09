@@ -76,21 +76,34 @@ Rainbow Elevator.
   "unicorn riding a solid rainbow" reference, in the game's own blocky
   pixel-art style rather than the reference's smooth curves, applied to
   both charging *and* flight)**: replaced the ball pit with a **solid
-  striped rainbow ribbon**. `RIBBON_SPINE` is a fixed wavy path (built once
-  at module load, a sine-wave sway from the ground up to `NECK_H`);
-  `drawChargePile()` still reveals a growing prefix of it exactly as the
-  ball pit did (same `aimHoldTime`/`FILL_TIME` timing, same cap logic), but
-  hands the revealed points to a new `drawRibbon(points, thickness)` that
-  draws all 7 ROYGBIV bands as parallel perpendicular-offset strokes along
-  the path -- a flat, striped ribbon instead of a pile of separate shapes.
-  `drawTrail()` (Phase 3 below) got the same band-offset treatment so the
-  flight trail is now the same solid ribbon instead of a single
-  cycling-color line -- the pony visibly "rides" a rainbow exactly like the
-  reference, just rendered as flat pixel-art stripes instead of smooth
-  cartoon curves, consistent with the rest of the game's look. Both share
-  the perpendicular-offset technique but stayed as two separate functions
-  since `drawTrail()` needs a per-segment taper (alpha/width) `drawRibbon()`
+  striped rainbow ribbon**. `drawChargePile()` still reveals a growing
+  prefix of a fixed path exactly as the ball pit did (same
+  `aimHoldTime`/`FILL_TIME` timing, same cap logic), but hands the revealed
+  points to a new `drawRibbon(points, thickness)` that draws all 7 ROYGBIV
+  bands as parallel perpendicular-offset strokes along the path -- a flat,
+  striped ribbon instead of a pile of separate shapes. `drawTrail()` (Phase
+  3 below) got the same band-offset treatment so the flight trail is now
+  the same solid ribbon instead of a single cycling-color line -- the pony
+  visibly "rides" a rainbow exactly like the reference, just rendered as
+  flat pixel-art stripes instead of smooth cartoon curves. Both share the
+  perpendicular-offset technique but stayed as two separate functions since
+  `drawTrail()` needs a per-segment taper (alpha/width) `drawRibbon()`
   doesn't.
+- **Revision 4 (2026-09-10, same day, user: "чё это за хрень? какашки
+  по-твоему?")**: revision 3's `RIBBON_SPINE` was a tight sine-wave curl
+  rising up beside the belly (`sin(t*2.2π)*10` sway, height up to
+  `NECK_H`) -- at low fill it was a short, thick, S-curled blob, which read
+  as a poop swirl again despite being built from ribbon bands rather than
+  poop shapes. Replaced with a **shallow, uncurled droop trailing straight
+  back from the tail** (`RIBBON_BASE_DX = -22` anchor, `x: -t*RIBBON_MAX_LEN,
+  y: t*t*46` -- a parabola, no S-curve) that only ever gets longer, never
+  coils. `updateFirework()`'s spark origin moved from a fixed vertical
+  "current height" to the path's actual current tip (`RIBBON_SPINE[round(
+  fillFrac * (length-1))]`), since growth is now along a diagonal path
+  rather than straight up. The anchor also moved from the belly
+  (`pony.x+6`) to near the tail (`pony.x + RIBBON_BASE_DX`), shared via the
+  `RIBBON_BASE_DX` constant across `drawChargePile()`, `updateFirework()`,
+  and the release burst so all three stay in sync.
 - Throw angle is clamped to a sane range (-0.92π to -0.08π, i.e. almost
   straight up to almost horizontal-forward, never backward/down)
 - Too short a gesture (< 8% of max radius) — aiming is cancelled, nothing

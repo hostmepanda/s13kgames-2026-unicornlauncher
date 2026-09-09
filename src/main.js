@@ -27,20 +27,22 @@ const MAX_FLAPS = 3;
 const PONY_NOSE_LX = 91, PONY_NOSE_LY = -68;
 
 // Charge-up rainbow ribbon: while holding the aim, a solid striped ribbon
-// coils up in front of the pony, filling over FILL_TIME seconds up to
-// NECK_H (matching the sprite's own neck height -- see PONY_NOSE_LY above)
-// and no further, no matter how long the hold continues -- riding a
-// rainbow like the cartoon-unicorn reference, not a stack of separate
-// dots. RIBBON_SPINE is a fixed wavy path (built once) from the ground up
-// to NECK_H; drawChargePile() just reveals a growing prefix of it based on
-// elapsed hold time, so the already-drawn part never moves or reshuffles.
+// trails out behind the pony's tail, growing over FILL_TIME seconds up to
+// RIBBON_MAX_LEN and no further, no matter how long the hold continues --
+// the same rainbow the flight trail rides, just built up ahead of time.
+// RIBBON_SPINE is a fixed, gently-drooping path (built once, a shallow
+// parabola, no S-curve/coiling -- a tight curl read as a poop swirl rather
+// than a flowing ribbon, 2026-09-10 user report: "чё это за хрень? какашки
+// по-твоему?"); drawChargePile() just reveals a growing prefix of it based
+// on elapsed hold time, so the already-drawn part never moves or reshuffles.
 const FILL_TIME = 7;
-const NECK_H = 52;
+const RIBBON_BASE_DX = -22; // anchor point: near the tail, not the belly
+const RIBBON_MAX_LEN = 75;
 const RIBBON_SPINE = (() => {
   const steps = 14, pts = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
-    pts.push({ x: Math.sin(t * Math.PI * 2.2) * 10, y: -t * NECK_H });
+    pts.push({ x: -t * RIBBON_MAX_LEN, y: t * t * 46 });
   }
   return pts;
 })();
@@ -250,24 +252,24 @@ function updateVolcano(dt) {
   }
 }
 
-// Firework sparkle: a few glints pop off the ball pile's current fill
-// level every ~0.12s while charging, reusing the heart/poop particle array
-// (type 'spark', drawn by drawSparkShape). Keeps firing at the capped
-// (NECK_H) height once the pile is full -- reads as "still pouring in, but
-// it doesn't pile any higher," the firework feel the pile itself can't
-// convey once it stops growing.
+// Firework sparkle: a few glints pop off the ribbon's current tip every
+// ~0.12s while charging, reusing the heart/poop particle array (type
+// 'spark', drawn by drawSparkShape). Keeps firing at the capped tip once
+// the ribbon is fully out -- reads as "still building up," the firework
+// feel the ribbon itself can't convey once it stops growing.
 let fireworkTimer = 0;
 function updateFirework(dt) {
   fireworkTimer -= dt;
   if (fireworkTimer > 0) return;
   fireworkTimer = 0.12;
   const fillFrac = Math.min(1, state.aimHoldTime / FILL_TIME);
-  const topY = groundY - fillFrac * NECK_H;
+  const tip = RIBBON_SPINE[Math.round(fillFrac * (RIBBON_SPINE.length - 1))];
+  const tipX = state.pony.x + RIBBON_BASE_DX + tip.x, tipY = groundY + tip.y;
   for (let i = 0; i < 2; i++) {
-    const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.6;
+    const a = Math.random() * Math.PI * 2;
     const sp = 60 + Math.random() * 100;
     state.hearts.push({
-      x: state.pony.x + 6 + (Math.random() - 0.5) * 20, y: topY,
+      x: tipX + (Math.random() - 0.5) * 12, y: tipY,
       vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
       life: 0.35, age: 0, small: true, type: 'spark',
       color: stops[Math.floor(Math.random() * stops.length)],
@@ -475,7 +477,7 @@ function launch() {
     const a = Math.random() * Math.PI * 2;
     const sp = 100 + Math.random() * 220;
     state.hearts.push({
-      x: state.pony.x + 6 + s.x, y: groundY + s.y,
+      x: state.pony.x + RIBBON_BASE_DX + s.x, y: groundY + s.y,
       vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
       life: 0.9, age: 0, small: false, type: 'confetti',
       rot: (Math.random() - 0.5) * 2,
@@ -975,22 +977,22 @@ function drawSparkShape(s, color) {
   ctx.stroke();
 }
 
-// Charge pile: a solid rainbow ribbon that coils up while aiming -- reveals
-// a growing prefix of the fixed RIBBON_SPINE path based on
-// state.aimHoldTime, capped at FILL_TIME seconds (further holding just
-// keeps the firework sparkles going at the capped height, see
-// updateFirework -- user: "заполняет единорога до горла и продолжает
-// наливать, но куча выше горла не заполняется", then later: "хочу что-то
-// вроде [cartoon unicorn riding a rainbow]"). Drawn *after* the pony (see
-// render()) so it visibly buries the lower body as it fills instead of
-// sitting behind it.
+// Charge pile: a solid rainbow ribbon trailing out behind the tail while
+// aiming -- reveals a growing prefix of the fixed RIBBON_SPINE path based
+// on state.aimHoldTime, capped at FILL_TIME seconds (further holding just
+// keeps the firework sparkles going at the capped tip, see
+// updateFirework). History: first a pile that buried the pony up to the
+// neck, then a ball pit doing the same -- both read fine growing but a
+// short/curled ribbon at low fill looked like a poop swirl (2026-09-10
+// user report), so this version trails straight back along a shallow
+// droop instead of coiling in place.
 function drawChargePile() {
   if (state.mode !== 'aim' || !state.aimActive) return;
   const fillFrac = Math.min(1, state.aimHoldTime / FILL_TIME);
   const n = Math.max(2, Math.round(fillFrac * RIBBON_SPINE.length));
-  const baseX = state.pony.x + 6, baseY = groundY;
+  const baseX = state.pony.x + RIBBON_BASE_DX, baseY = groundY;
   const pts = RIBBON_SPINE.slice(0, n).map(p => ({ x: baseX + p.x, y: baseY + p.y }));
-  drawRibbon(pts, 16);
+  drawRibbon(pts, 14);
 }
 
 // Start-screen illustration: a hand pulling a demo pony back, plus a dashed
@@ -1212,8 +1214,6 @@ function render(dt) {
     // 'aim' (reset in resetLaunch()), so this needs no special-casing.
     drawPony(ctx, state.pony.x, state.pony.y, state.pony.rot, animT);
   }
-  // drawn *after* the pony so a tall pile visibly buries it, not just sits
-  // behind it
   drawChargePile();
   ctx.restore();
 
