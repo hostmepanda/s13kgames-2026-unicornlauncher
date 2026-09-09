@@ -67,9 +67,9 @@ let camX = 0; // world-space camera offset (screen_x = world_x - camX)
 // during its brief active window is an instant miss, the same role a
 // bird/wind/lava hazard plays for the other locations. Each location keeps
 // exactly one hazard type (rain+lightning together count as Mountains').
-// Runs off state.bgLevel (the location actually on screen), not state.level,
-// and just keeps ticking in the background rather than resetting per
-// attempt -- strikes aren't tied to the current flight.
+// Runs off state.bgLevel (the location actually on screen), not state.level.
+// The countdown itself carries over between attempts rather than resetting
+// (see updateWeather for why it only ticks during an actual flight).
 function isMountains() { return state.bgLevel % LOCATIONS.length === 1; }
 let lightningTimer = 2 + Math.random() * 2;
 let lightningX = 0;
@@ -79,13 +79,22 @@ let lightningActiveT = 0;
 
 function updateWeather(dt) {
   if (!isMountains()) return;
-  lightningTimer -= dt;
+  // The timer only counts down during an actual flight (not while aiming),
+  // and a fresh strike is aimed just ahead of the pony's *current* position
+  // rather than anywhere in the whole reachable range. The first version
+  // free-ran on the wall clock and picked an x anywhere across ~1400px, so
+  // most strikes fired while the player was still aiming (wasted -- nothing
+  // could be hit) or landed far outside that flight's actual path (user
+  // report: "lightning and birds don't seem to affect the flight at all").
+  // Gating to flight-time plus aiming ahead of the pony makes a strike
+  // during a flight both frequent and reachable.
+  if (state.mode === 'flight') lightningTimer -= dt;
   if (lightningTimer <= 0) {
-    lightningX = state.originX + 150 + Math.random() * (TARGET_DIST_ACHIEVABLE_MAX - 100);
+    lightningX = state.pony.x + 150 + Math.random() * 350;
     lightningFlash = 1;
     lightningActive = true;
-    lightningActiveT = 0.18;
-    lightningTimer = 2.6 + Math.random() * 2.4;
+    lightningActiveT = 0.4;
+    lightningTimer = 1.6 + Math.random() * 1.6;
     sfxThunder();
   }
   if (lightningActive) {
@@ -96,7 +105,7 @@ function updateWeather(dt) {
 
   if (lightningActive && state.mode === 'flight') {
     const p = state.pony;
-    if (Math.abs(p.x - lightningX) < 42 && p.y < groundY) endFlight(false);
+    if (Math.abs(p.x - lightningX) < 60 && p.y < groundY) endFlight(false);
   }
 }
 
@@ -113,10 +122,14 @@ let birdX = 0, birdTimer = 1 + Math.random() * 2, birdInside = false;
 
 function updateBirds(dt) {
   if (!isCity()) { birdInside = false; return; }
-  birdTimer -= dt;
+  // Same fix as Mountains' lightning: relocate relative to the pony's
+  // current position during an actual flight, not anywhere across the
+  // whole reachable range on a free-running clock -- otherwise the flock
+  // usually sits somewhere a given flight never reaches.
+  if (state.mode === 'flight') birdTimer -= dt;
   if (birdTimer <= 0) {
-    birdX = state.originX + 150 + Math.random() * (TARGET_DIST_ACHIEVABLE_MAX - 200);
-    birdTimer = 4 + Math.random() * 3;
+    birdX = state.pony.x + 150 + Math.random() * 400;
+    birdTimer = 2.4 + Math.random() * 2;
   }
   if (state.mode === 'flight') {
     const p = state.pony;

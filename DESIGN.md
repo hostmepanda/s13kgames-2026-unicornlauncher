@@ -467,6 +467,44 @@ wind gusts/volcano = still to design).
   forced repaints, confirming it decayed while inside the zone and stopped
   once outside it, then removed before commit.
 
+### Fix: both obstacles felt like they did nothing (2026-09-09)
+
+User report: "похоже молния и птицы никак не влияют на полёт юникорна"
+(lightning and birds don't seem to affect the flight at all). Root cause
+in both `updateWeather()` and `updateBirds()`: the relocation timer
+free-ran on the wall clock regardless of `state.mode`, and the new
+`lightningX`/`birdX` was picked anywhere across the whole reachable range
+(~1400px) independent of where the pony actually was. Two compounding
+effects: (1) since aiming (choosing a shot) usually takes longer than a
+~1-2s flight, most strikes/relocations fired *while the player was still
+aiming* and had already expired (or, for birds, drifted stale) by the time
+a flight actually happened; (2) even during a flight, a uniformly-random x
+across the full range was usually farther than that flight's actual reach.
+Net effect: an obstacle only mattered on a small fraction of flights,
+reading as "doesn't do anything."
+
+Fix, same shape for both:
+- The countdown (`lightningTimer` / `birdTimer`) now only decrements while
+  `state.mode === 'flight'` — every second it counts down is a second an
+  obstacle could actually matter, instead of being spent waiting on the
+  aim screen.
+- The new position is picked relative to `state.pony.x` *at the moment of
+  relocation* (which now only happens mid-flight) rather than relative to
+  `state.originX` across the whole range: `pony.x + 150..500` for
+  lightning, `pony.x + 150..550` for birds. Since relocation now always
+  happens while a flight is already moving, "ahead of the pony right now"
+  is also "ahead of the pony for the rest of this flight," which the old
+  origin-relative version wasn't.
+- Lightning's active window and hit radius were also widened (0.18s → 0.4s,
+  42px → 60px) and its interval shortened (2.6-5s → 1.6-3.2s) so a strike
+  that does land in a flight's path has a realistic chance of actually
+  overlapping the pony's position, not just its x-column at one instant.
+- Verified via a temporary debug hook (`forceLightning()`/`forceBirds()`
+  to zero the timer, `fly()` to force `state.mode='flight'` with a known
+  velocity) confirming a strike now reliably lands within ~150-500px of
+  the pony's position at the moment of triggering, and reproducing an
+  actual lightning-caused miss end-to-end; removed before commit.
+
 **Byte budget check** (measured by building actual past commits, not
 guessed): a simple procedural parallax layer (silhouette tiling, no
 sprites) costs roughly **80-150 bytes zipped** each; a location built from
