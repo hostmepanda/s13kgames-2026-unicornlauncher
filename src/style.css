@@ -31,3 +31,7 @@ html,body{
 }
 #intro b{font-size:32px;}
 #intro i{font-size:17px; opacity:.7; font-style:normal;}
+#intro small{
+  position:absolute; bottom:14px; left:0; right:0;
+  font-size:12px; opacity:.5;
+}

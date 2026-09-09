@@ -72,7 +72,12 @@ const state = {
   bgLevel: 0, // location actually shown -- lags state.level until the next
               // resetLaunch(), so the background only switches when the
               // player taps to start the next attempt, not mid-result-screen
+  cycleStats: [], // tries taken per completed lap (index 0 = lap 1), shown
+                   // stacked on the lap-end/game-end screens
+  triesAtCycleStart: 0, // state.tries snapshot at the start of the current lap
 };
+
+const MAX_LAPS = 10; // laps through all 5 locations before the "master" screen
 
 let camX = 0; // world-space camera offset (screen_x = world_x - camX)
 
@@ -306,6 +311,8 @@ function resetGame() {
   state.level = 0;
   state.levelHits = 0;
   state.bgLevel = 0;
+  state.cycleStats = [];
+  state.triesAtCycleStart = 0;
   stopWindSound();
   resetLaunch();
   document.getElementById('tries').textContent = 0;
@@ -363,7 +370,7 @@ cv.addEventListener('pointerdown', e => {
     sfxAim();
   } else if (state.mode === 'flight') {
     doFlap();
-  } else if (state.mode === 'result') {
+  } else if (state.mode === 'result' || state.mode === 'cycleEnd' || state.mode === 'gameEnd') {
     document.getElementById('tries').textContent = ++state.tries;
     resetLaunch();
   }
@@ -508,6 +515,20 @@ function endFlight(won) {
     document.getElementById('level').textContent = state.level + 1;
     document.getElementById('hits').textContent = state.levelHits;
     if (state.leveledUp) sfxLevelUp(); else sfxHit();
+    // A lap (all 5 locations) just closed -- state.level is a fresh
+    // multiple of LOCATIONS.length exactly when the level-up above was
+    // also Caves' 3rd hit (the last location in the cycle). Record how
+    // many tries this lap took and show a dedicated screen instead of the
+    // usual "Level up!" one -- the game-end screen only fires once, right
+    // when the count reaches MAX_LAPS (never again afterward), so the game
+    // keeps going as an untracked endless mode past that point rather than
+    // hard-stopping.
+    if (state.leveledUp && state.level % LOCATIONS.length === 0) {
+      state.cycleStats.push(state.tries - state.triesAtCycleStart);
+      state.triesAtCycleStart = state.tries;
+      const lap = state.level / LOCATIONS.length;
+      state.mode = lap >= MAX_LAPS ? 'gameEnd' : 'cycleEnd';
+    }
   } else {
     sfxMiss();
   }
@@ -993,6 +1014,60 @@ function drawResultText() {
   ctx.textAlign = 'left';
 }
 
+// Shared by the lap-end and game-end screens: the stacked "Lap N: X tries"
+// list, oldest lap first, growing downward from startY. Returns the y just
+// past the last line so the caller can stack more text under it.
+function drawLapStats(startY, fontSize) {
+  ctx.font = fontSize + 'px sans-serif';
+  ctx.fillStyle = '#2a2a3a';
+  const lineH = fontSize + 8;
+  state.cycleStats.forEach((tries, i) => {
+    ctx.fillText(`Lap ${i + 1}: ${tries} tries`, W / 2, startY + i * lineH);
+  });
+  return startY + state.cycleStats.length * lineH;
+}
+
+// Shown once per lap (every 5 locations cleared) instead of the plain
+// "Level up!" result text -- a bigger celebratory beat with the running
+// tries-per-lap history stacked underneath, so clearing lap 2 also shows
+// how lap 1 went.
+function drawCycleEndScreen() {
+  if (state.mode !== 'cycleEnd') return;
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  const lap = state.level / LOCATIONS.length;
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillStyle = '#2a9d4a';
+  ctx.fillText(`Lap ${lap} complete! 🌈`, W / 2, H * 0.26);
+  const y = drawLapStats(H * 0.26 + 44, 17);
+  ctx.font = '14px sans-serif';
+  ctx.fillStyle = 'rgba(40,40,60,0.65)';
+  ctx.fillText('tap to continue', W / 2, y + 16);
+  ctx.textAlign = 'left';
+}
+
+// Shown exactly once, the moment lap MAX_LAPS closes -- after tapping past
+// it the game just keeps going (harder every lap via placeTarget()'s cycle
+// ramp) as an untracked endless mode, it never shows again.
+function drawGameEndScreen() {
+  if (state.mode !== 'gameEnd') return;
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 30px sans-serif';
+  ctx.fillStyle = '#c23b9c';
+  ctx.fillText('Unicorn Master! 🦄🌈', W / 2, H * 0.2);
+  ctx.font = '16px sans-serif';
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillText(`All ${MAX_LAPS} laps cleared!`, W / 2, H * 0.2 + 30);
+  const y = drawLapStats(H * 0.2 + 62, 15);
+  ctx.font = '13px sans-serif';
+  ctx.fillStyle = 'rgba(40,40,60,0.6)';
+  ctx.fillText('tap to keep flying', W / 2, y + 16);
+  ctx.textAlign = 'left';
+}
+
 let animT = 0;
 
 function render(dt) {
@@ -1036,6 +1111,8 @@ function render(dt) {
   // screen-space UI (power bar, arrow, result text, minimap)
   drawAimUI();
   drawResultText();
+  drawCycleEndScreen();
+  drawGameEndScreen();
   drawMinimap();
 }
 

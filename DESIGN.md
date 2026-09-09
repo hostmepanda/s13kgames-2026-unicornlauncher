@@ -642,6 +642,59 @@ button.
   per-location target distance/difficulty tuning (every level past 1 uses
   the same blind-aim distance formula regardless of location/obstacle)
 - Do we need progress persistence (localStorage) in the first version, or is
-  clearing all levels in a single session without saving enough?
-- What happens after the last level (loop back to the first, an "end"
-  screen, just repeat)?
+  clearing all levels in a single session without saving enough? (Lap
+  history below is in-memory only, lost on reload -- same answer either way
+  for now.)
+- **Resolved (2026-09-09): lap-end and game-end screens, see section 14.**
+
+## 14. Lap-end and game-end screens (2026-09-09)
+
+User: after finishing a lap (all 5 locations), show a proper "you cleared
+lap N" screen with a score, and stack every previous lap's score on it too
+(so lap 2's screen also shows how lap 1 went). Separately: cap the game at
+`MAX_LAPS = 10` and show a distinct "master" screen the one time that's
+reached, then just keep going.
+
+- **Score = tries taken that lap**, not hits (hits per lap are always
+  exactly `LEVEL_HITS_REQUIRED * LOCATIONS.length` = 15, since clearing a
+  location always takes exactly 3 hits — the number that actually varies,
+  and the one already tracked, is how many attempts it took). Tracked via
+  `state.triesAtCycleStart` (a snapshot of `state.tries` at the lap's
+  start) and `state.cycleStats` (an array, index 0 = lap 1, appended to
+  every time a lap closes).
+- A lap closes exactly when a level-up's `state.level` lands on a fresh
+  multiple of `LOCATIONS.length` (`endFlight()`, right after the existing
+  `state.level++`/`leveledUp` logic) — that's precisely "the level-up was
+  also Caves' 3rd hit," the last location in the cycle. At that point the
+  flight's terminal mode is overridden from `'result'` to either
+  `'cycleEnd'` (lap < MAX_LAPS) or `'gameEnd'` (lap === MAX_LAPS, which by
+  construction can only be true once — `state.level` never revisits that
+  exact value). Both new modes reuse the existing "tap to continue"
+  pointerdown branch (extended alongside `'result'`) to call `resetLaunch()`
+  and carry on.
+- `drawCycleEndScreen()` / `drawGameEndScreen()` (in `main.js`, called from
+  `render()` next to `drawResultText()`) both lean on a shared
+  `drawLapStats(startY, fontSize)` helper that prints `state.cycleStats` as
+  a stacked "Lap N: X tries" list — the actual "show lap 1 and lap 2
+  together" ask is just this array growing by one element per lap, printed
+  in full every time. Verified at `lap=10` that all ten lines still fit
+  the screen without overflow.
+- Past `MAX_LAPS`, the game doesn't hard-stop -- tapping through the
+  "Unicorn Master!" screen just calls `resetLaunch()` like any other
+  continue, and `state.level` keeps climbing past `MAX_LAPS *
+  LOCATIONS.length` (the existing per-cycle difficulty ramp in
+  `placeTarget()` already plateaus around cycle 4, so this isn't a
+  balancing concern -- it's just endless mode with no further screens).
+  `resetGame()` (the restart button) clears `cycleStats`/
+  `triesAtCycleStart` along with the rest of the run state.
+- Also added, same request batch: a small "a js13kgames 2026 entry" credit
+  line on the start screen (`#intro small` in `style.css`/`index.html`),
+  absolutely positioned at the bottom of the intro overlay rather than
+  inline in its text flow -- inline it pushed the intro's flex layout tall
+  enough to visually collide with the canvas-drawn demo illustration below
+  it (which sits at a fixed `H*0.56`, unaware of the HTML content's actual
+  height).
+- QA: same debug-hook-plus-screenshot approach as the obstacle work --
+  `forceLapEnd(lap)` fabricated a plausible `cycleStats` history and jumped
+  straight to lap 2's and lap 10's screens without having to actually play
+  50 attempts; removed before commit.
