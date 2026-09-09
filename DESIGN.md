@@ -98,12 +98,22 @@ Rainbow Elevator.
   back from the tail** (`RIBBON_BASE_DX = -22` anchor, `x: -t*RIBBON_MAX_LEN,
   y: t*t*46` -- a parabola, no S-curve) that only ever gets longer, never
   coils. `updateFirework()`'s spark origin moved from a fixed vertical
-  "current height" to the path's actual current tip (`RIBBON_SPINE[round(
-  fillFrac * (length-1))]`), since growth is now along a diagonal path
-  rather than straight up. The anchor also moved from the belly
-  (`pony.x+6`) to near the tail (`pony.x + RIBBON_BASE_DX`), shared via the
-  `RIBBON_BASE_DX` constant across `drawChargePile()`, `updateFirework()`,
-  and the release burst so all three stay in sync.
+  "current height" to the path's actual current tip, since growth was now
+  along a diagonal path rather than straight up.
+- **Revision 5 (2026-09-10, same day, user: "а куда радуга растёт? Ты не
+  можешь сделать просто кучки кружочков?")**: even the uncurled trailing
+  ribbon read as unclear/pointless-looking to the user -- it grows off at a
+  diagonal away from the pony rather than visibly "filling" something, so
+  the direction and purpose weren't obvious at a glance the way a pile
+  stacking upward is. Given a direct, literal request ("just piles of
+  circles"), reverted the charge pile to the ball-pit design from revision
+  2: `BALL_SLOTS` (the bottom-heavy pyramid, capped at `NECK_H`) and
+  `drawBallShape()` are back, anchored at the belly (`pony.x+6`) like
+  before, same `aimHoldTime`/`FILL_TIME` timing and firework-sparkle
+  behavior throughout. The flight trail (Phase 3 below) keeps the striped-
+  ribbon look from revision 3 -- that part was never the complaint, only
+  the charge-up pile's shape kept missing on three different tries (poop
+  mound → coiled ribbon → trailing ribbon) before landing back on circles.
 - Throw angle is clamped to a sane range (-0.92π to -0.08π, i.e. almost
   straight up to almost horizontal-forward, never backward/down)
 - Too short a gesture (< 8% of max radius) — aiming is cancelled, nothing
@@ -127,11 +137,10 @@ Rainbow Elevator.
 - Releasing the finger converts the accumulated power into launch speed:
   `speed = BASE_SPEED + power * POWER_MULT` (600 + power*900)
 - Initial vx/vy are computed from angle and speed
-- The rainbow ribbon bursts into confetti on release: however much of
-  `RIBBON_SPINE` had actually been revealed (`fillFrac`, not a flat count)
-  scatters as small blocky chips (`type:'confetti'`, `drawConfettiShape()`,
-  each with a fixed random `rot` set at spawn so they don't jitter frame to
-  frame), reusing the same particle array/physics as the heart bursts
+- The ball pile scatters into 10-26 rainbow balls on release (count scales
+  with `fillFrac` of `BALL_SLOTS`, not a flat count from power alone),
+  reusing the same particle array/physics as the heart bursts
+  (`type:'ball'`, `drawBallShape()`'s outlined glossy sphere)
 - From there it's ballistics: gravity constantly pulls down (G=1400 px/s²)
 
 ### Phase 3 — Flight (with correction)
