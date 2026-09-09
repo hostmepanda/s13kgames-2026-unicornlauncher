@@ -776,3 +776,67 @@ reached, then just keep going.
   `forceLapEnd(lap)` fabricated a plausible `cycleStats` history and jumped
   straight to lap 2's and lap 10's screens without having to actually play
   50 attempts; removed before commit.
+
+## 15. Fixed-angle aim exploit (2026-09-10)
+
+User report + annotated screenshot: a single fixed full-power angle,
+thrown blindly with no adjustment per target, reliably hit blind-aim
+targets ("если вот этот угол указывать то можно вообще не напрягаться и
+просто тупо стрелять единорогом и постоянно попадать в облако").
+
+**Diagnosis** (isolated math simulation first, then confirmed against the
+real game via a temporary in-browser test harness -- `runExploitTest()`,
+stepping `update()` directly without rendering so hundreds of trials run in
+under a second): the old blind-aim ranges were narrow relative to any
+single trajectory's natural "in-band" window. A parabola's height changes
+slowest near its apex, so a fixed angle/power's trajectory stays within a
+plausible target-height tolerance across a wide swath of x -- and the old
+distance range (`screenSpan * (1.05..1.4)`, roughly 220px wide on a typical
+viewport) sat entirely inside that swath. Simulated hit rate for one
+memorized angle: 40-80% depending on viewport/cycle.
+
+**What didn't work**: coupling target height to distance in either
+direction (still ~85-100%, since a single trajectory's own height-vs-
+distance curve can track a smooth imposed correlation just as easily as
+independent randomness); increasing gravity `G` alone without touching
+`TARGET_DIST_ACHIEVABLE_MAX` (looked like a big improvement, ~22-30%, but
+was invalid -- it silently placed targets beyond the new, shorter max
+reach, so the "fix" was really just unreachable targets, not a real
+change); increasing `G` *and* correctly re-deriving `TARGET_DIST_ACHIEVABLE_MAX`
+to preserve reachability (this is the physically honest version, but even
+at G=3600 -- 2.6x the original -- the best-fixed-angle rate only dropped to
+~45%, and this route was abandoned anyway: it would shorten flight
+durations enough to risk invalidating the obstacle-timing tuning from
+sections 11's Mountains/City/Beach/Caves write-ups, which assume ~1-2s
+flights).
+
+**What shipped** (in `placeTarget()`'s blind-aim branch and the target-hit
+check):
+- Widened the blind-aim distance formula's random range (`distFrac` from
+  `1.05 + rand*0.35` to `0.3 + rand*1.7`, both still `+ cycle*0.15`) so
+  target distance itself varies far more, forcing real power variation
+  shot to shot instead of "always full power."
+- Caught mid-fix, testing against the real game (not just the isolated
+  model) at a wide desktop window (1440px): `screenSpan` alone was already
+  close to `TARGET_DIST_ACHIEVABLE_MAX` there, so multiplying by the
+  (correctly) widened `distFrac` clipped most of the distribution straight
+  to the 1400 cap anyway -- recreating a narrow, exploitable cluster
+  despite the wider formula. Fixed by capping the `screenSpan` basis itself
+  at 700px before multiplying (`Math.min(screenSpan, 700) * distFrac`), so
+  the distance distribution's shape no longer depends on how wide the
+  browser window happens to be.
+- Widened the blind-aim height range (`heightMax` from a flat 320px to
+  `Math.min(500, H * 0.65)`), so a trajectory's fixed apex height can no
+  longer cover as much of the possible target-height space.
+- Tightened `PONY_HIT_RADIUS` 22 → 16 (small additional margin reduction,
+  on top of the capsule check from section 2's hit-check history).
+- Net effect on the real game (measured via the same in-browser harness):
+  best-fixed-angle hit rate down from ~50-80% to ~50% at baseline gravity
+  (the harness's own final reading, since the G-increase route was
+  abandoned) -- a real, meaningful reduction, though not a complete
+  elimination; a genuinely aimed shot (angle *and* power chosen per
+  target) still lands consistently. Left as a known limitation rather than
+  chasing further gravity/speed changes given the risk to other tuned
+  systems; worth revisiting later with a more targeted approach (e.g.
+  explicit per-shot trajectory variation) if it still reads as exploitable
+  in practice.

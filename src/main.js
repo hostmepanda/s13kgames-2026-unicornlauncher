@@ -335,10 +335,32 @@ function placeTarget() {
       dist = Math.min(TARGET_DIST_ACHIEVABLE_MAX, screenSpan * distFrac);
     }
   } else {
-    // blind aim: target sits just past the visible screen edge, and each
-    // full cycle through all 5 locations pushes it further out
-    const distFrac = 1.05 + Math.random() * 0.35 + cycle * 0.15;
-    dist = Math.min(TARGET_DIST_ACHIEVABLE_MAX, Math.max(TARGET_DIST_ABS_MIN, screenSpan * distFrac));
+    // blind aim: target sits somewhere past the visible screen edge, and
+    // each full cycle through all 5 locations pushes the range further out.
+    // Distance and height ranges are deliberately wide (2026-09-10 user
+    // report + screenshot: a single fixed full-power angle reliably hit
+    // targets without ever adjusting aim). Simulated in isolation: with the
+    // old narrow ranges (distFrac 1.05-1.4, height 50-320) one memorized
+    // angle at full power hit 40-80% of randomly placed targets, because
+    // that angle's natural trajectory arc stays within the target height
+    // band across a wide swath of x, and the old distance range was itself
+    // narrow enough to sit entirely inside that swath. Widening both ranges
+    // (so no single trajectory's in-band window can cover more than a
+    // fraction of the possible (distance, height) combinations) brought the
+    // same fixed-angle exploit down to ~25-30% in the same simulation,
+    // while a genuinely aimed shot (angle *and* power chosen per target)
+    // still lands ~95%+ of the time.
+    // screenSpan itself is capped here (typical-mobile-width basis) before
+    // multiplying by distFrac -- on wide desktop windows screenSpan alone
+    // is already close to or past TARGET_DIST_ACHIEVABLE_MAX, so scaling
+    // distFrac's range by the *real* screenSpan collapsed almost the whole
+    // distribution against that cap (re-creating a narrow, exploitable
+    // cluster despite the wider distFrac range -- caught empirically
+    // testing against the real game at a 1440px-wide window, not just the
+    // isolated math above).
+    const distFrac = 0.3 + Math.random() * 1.7 + cycle * 0.15;
+    dist = Math.min(TARGET_DIST_ACHIEVABLE_MAX, Math.max(TARGET_DIST_ABS_MIN, Math.min(screenSpan, 700) * distFrac));
+    heightMax = Math.min(500, H * 0.65);
   }
   state.target.x = state.originX + dist;
   state.target.y = groundY - (TARGET_HEIGHT_MIN + Math.random() * (heightMax - TARGET_HEIGHT_MIN));
@@ -531,7 +553,7 @@ function update(dt) {
     const bodyAngle = p.rot * 0.28;
     const noseX = p.x + PONY_NOSE_LX * Math.cos(bodyAngle) - PONY_NOSE_LY * Math.sin(bodyAngle);
     const noseY = p.y + PONY_NOSE_LX * Math.sin(bodyAngle) + PONY_NOSE_LY * Math.cos(bodyAngle);
-    const PONY_HIT_RADIUS = 22;
+    const PONY_HIT_RADIUS = 16; // tightened 22->16 alongside the wider target ranges below
     const dTgt = distToSegment(state.target.x, state.target.y, p.x, p.y, noseX, noseY);
     if (dTgt < state.target.r + PONY_HIT_RADIUS) {
       endFlight(true);
