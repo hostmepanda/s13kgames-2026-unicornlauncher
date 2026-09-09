@@ -40,6 +40,7 @@ const state = {
   mode: 'aim', // aim | flight | result
   originX: 0, originY: 0,
   aimActive: false,
+  aimIsMouse: false, // true if this aim gesture is a mouse drag (see computeAim)
   aimDX: 0, aimDY: 0, // drag vector, used for power+angle
   power: 0, // 0..1
   angle: -Math.PI / 4,
@@ -239,11 +240,31 @@ function aimVectorFrom(e) {
   return [e.clientX - (state.pony.x - camX), e.clientY - state.pony.y];
 }
 
+// Angle+power from the raw drag vector. Touch/pen keep the slingshot feel
+// (pull away from the throw direction, angle = opposite of the drag) --
+// tested and confirmed to work well. Mouse instead always points at the
+// cursor itself (angle = toward the drag vector, not away from it): with a
+// mouse, users kept approaching this like a reticle -- moving the cursor
+// above/in front of the pony instead of pulling back-and-down -- and since
+// that's outside the slingshot's assumed drag direction, the angle read as
+// "stuck" (clamped to the same edge value) instead of tracking the cursor.
+// Power still comes from drag distance either way, unchanged.
+const MAXD_FRAC = 0.28;
+function computeAim(dx, dy, isMouse) {
+  const MAXD = Math.min(W, H) * MAXD_FRAC;
+  const dist = Math.min(Math.hypot(dx, dy), MAXD);
+  const pow = dist / MAXD;
+  let ang = isMouse ? Math.atan2(dy, dx) : Math.atan2(-dy, -dx);
+  ang = Math.max(-Math.PI * 0.92, Math.min(-Math.PI * 0.08, ang));
+  return [ang, pow];
+}
+
 cv.addEventListener('pointerdown', e => {
   startMusic();
   if (state.mode === 'aim') {
     pointerId = e.pointerId;
     state.aimActive = true;
+    state.aimIsMouse = e.pointerType === 'mouse';
     [state.aimDX, state.aimDY] = aimVectorFrom(e);
     sfxAim();
   } else if (state.mode === 'flight') {
@@ -281,21 +302,12 @@ function doFlap() {
 }
 
 function launch() {
-  // drag down-back = power+angle. Clamp drag vector.
-  let dx = state.aimDX, dy = state.aimDY;
-  // we want dragging DOWN-LEFT (away from throw direction) to build power,
-  // similar to slingshot: throw direction is opposite drag.
-  let dist = Math.hypot(dx, dy);
-  const MAXD = Math.min(W, H) * 0.28;
-  dist = Math.min(dist, MAXD);
-  state.power = dist / MAXD;
+  const [ang, pow] = computeAim(state.aimDX, state.aimDY, state.aimIsMouse);
+  state.power = pow;
   if (state.power < 0.08) { // too small, cancel
     state.aimActive = false;
     return;
   }
-  let ang = Math.atan2(-dy, -dx); // opposite of drag direction
-  // clamp angle to sensible launch range (mostly upward-forward)
-  ang = Math.max(-Math.PI * 0.92, Math.min(-Math.PI * 0.08, ang));
   state.angle = ang;
 
   const SPEED = 600 + state.power * 900;
@@ -766,11 +778,7 @@ function drawIntroDemo() {
 function drawAimUI() {
   if (state.mode !== 'aim' || !state.aimActive) return;
   const p = { x: state.pony.x - camX, y: state.pony.y };
-  let dx = state.aimDX, dy = state.aimDY;
-  const dist = Math.min(Math.hypot(dx, dy), Math.min(W, H) * 0.28);
-  const ang = Math.atan2(-dy, -dx);
-  const clampedAng = Math.max(-Math.PI * 0.92, Math.min(-Math.PI * 0.08, ang));
-  const pow = dist / (Math.min(W, H) * 0.28);
+  const [ang, pow] = computeAim(state.aimDX, state.aimDY, state.aimIsMouse);
 
   // predicted arrow
   ctx.strokeStyle = 'rgba(80,60,120,0.55)';
@@ -778,7 +786,7 @@ function drawAimUI() {
   ctx.setLineDash([8, 8]);
   ctx.beginPath();
   ctx.moveTo(p.x, p.y);
-  ctx.lineTo(p.x + Math.cos(clampedAng) * 80 * (0.4 + pow), p.y + Math.sin(clampedAng) * 80 * (0.4 + pow));
+  ctx.lineTo(p.x + Math.cos(ang) * 80 * (0.4 + pow), p.y + Math.sin(ang) * 80 * (0.4 + pow));
   ctx.stroke();
   ctx.setLineDash([]);
 

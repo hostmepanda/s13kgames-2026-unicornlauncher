@@ -51,6 +51,20 @@ Rainbow Elevator.
   straight up to almost horizontal-forward, never backward/down)
 - Too short a gesture (< 8% of max radius) — aiming is cancelled, nothing
   happens
+- **Mouse aims at the cursor, touch/pen keeps the slingshot pull (2026-09-09)**:
+  `computeAim(dx, dy, isMouse)` branches the angle calc — `isMouse` (from
+  `e.pointerType === 'mouse'`, stored as `state.aimIsMouse` on
+  `pointerdown`) uses `atan2(dy, dx)` (angle toward the drag vector, i.e.
+  toward the cursor), everything else keeps `atan2(-dy, -dx)` (opposite of
+  drag, the slingshot pull described above). Power is unaffected either
+  way — still drag distance from the anchor. User feedback: with a mouse,
+  people approached this like a reticle (moving the cursor above/in front
+  of the pony) rather than pulling back-and-down: since that's outside the
+  slingshot's assumed drag direction, the angle read as clamped/stuck
+  instead of tracking the cursor. Deliberately scoped to mouse only —
+  touch/pen keep the already-tested-and-confirmed slingshot feel. Shared
+  between `launch()` and `drawAimUI()`'s preview arrow so they can't drift
+  apart.
 
 ### Phase 2 — Release
 - Releasing the finger converts the accumulated power into launch speed:
