@@ -840,3 +840,34 @@ check):
   systems; worth revisiting later with a more targeted approach (e.g.
   explicit per-shot trajectory variation) if it still reads as exploitable
   in practice.
+
+## 16. Flap-aware target placement for City/Beach/Caves (2026-09-10)
+
+User: for the last 3 locations, place targets with the flap-tap mechanic
+(3 free upward impulses per attempt) in mind so it's actually worth using,
+not just a safety net; Caves specifically should always place clouds in
+the screen's top half, and the lava column should reach up to the screen's
+vertical middle.
+
+- `placeTarget()`'s blind-aim branch now reads `state.bgLevel %
+  LOCATIONS.length` (set by `resetLaunch()` right before `placeTarget()`
+  runs, so it's already the correct upcoming location) and adjusts
+  `heightMin`/`heightMax` per location:
+  - City (idx 2) / Beach (idx 3): `heightMin` raised to 45% of `heightMax`
+    -- biases toward the upper part of the existing height range instead
+    of a hard floor, encouraging but not requiring a flap.
+  - Caves (idx 4): `heightMin` set to `caveSafeHeight()` -- clouds are
+    guaranteed to sit no lower than the screen's vertical middle.
+- Added `caveSafeHeight()` (`groundY - H * 0.5`, height-above-ground units
+  matching how `heightMin`/`heightMax` already work) and used the same
+  `H * 0.5` line for the lava column's reach in `updateVolcano()`'s hit
+  check and `drawLava()`'s render -- previously a fixed `LAVA_HEIGHT =
+  160` constant, now tied to the same line as the cloud floor so "fly
+  above this" is one consistent rule for the whole location instead of
+  two unrelated numbers that happened to almost line up.
+- Verified via a temporary debug hook sampling `state.target.y` across 15
+  placements per location: Caves samples were 100% above the half-screen
+  line (e.g. on a 722px-tall window, all ≤ 361), City/Beach samples
+  visibly shifted upward compared to the old uniform 50-500 range; the
+  lava column's rendered height was confirmed to reach the same line via
+  a forced-eruption screenshot. Removed before commit.

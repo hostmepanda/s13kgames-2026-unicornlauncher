@@ -233,7 +233,13 @@ function updateWind(dt) {
 // altitude the way a lightning bolt (sky to ground) does.
 function isCaves() { return state.bgLevel % LOCATIONS.length === 4; }
 const LAVA_ZONE = 55;
-const LAVA_HEIGHT = 160; // how far up from the ground the column reaches
+// The lava column reaches all the way up to the screen's vertical middle
+// (2026-09-10 user request: "вулкан должен бить до середины экрана"), and
+// placeTarget() places Caves' clouds no lower than that same line -- "fly
+// above this" is one consistent rule for the whole location, not two
+// unrelated numbers. Height-above-ground, not a screen y, since that's
+// what the hit check and placeTarget both work in.
+function caveSafeHeight() { return groundY - H * 0.5; }
 let lavaX = 0, lavaTimer = 1 + Math.random() * 2, lavaActive = false, lavaActiveT = 0;
 
 function updateVolcano(dt) {
@@ -252,7 +258,7 @@ function updateVolcano(dt) {
   }
   if (lavaActive && state.mode === 'flight') {
     const p = state.pony;
-    if (Math.abs(p.x - lavaX) < LAVA_ZONE && p.y > groundY - LAVA_HEIGHT) endFlight(false);
+    if (Math.abs(p.x - lavaX) < LAVA_ZONE && p.y > H * 0.5) endFlight(false);
   }
 }
 
@@ -315,6 +321,7 @@ function placeTarget() {
 
   let dist;
   let heightMax = TARGET_HEIGHT_MAX;
+  let heightMin = TARGET_HEIGHT_MIN;
   if (state.level === 0 && state.levelHits < 3) {
     // level 1 tutorial ramp: target starts clearly on screen, then edges
     // off screen over the 3 hits needed to clear the level, teaching the
@@ -361,9 +368,25 @@ function placeTarget() {
     const distFrac = 0.3 + Math.random() * 1.7 + cycle * 0.15;
     dist = Math.min(TARGET_DIST_ACHIEVABLE_MAX, Math.max(TARGET_DIST_ABS_MIN, Math.min(screenSpan, 700) * distFrac));
     heightMax = Math.min(500, H * 0.65);
+
+    // Last 3 locations (City/Beach/Caves): bias targets higher so the
+    // in-flight flap-tap correction (3 free upward impulses per attempt)
+    // is actually worth using, not just a safety net for a lazy throw
+    // (2026-09-10 user request). Caves goes further: clouds always sit in
+    // the screen's top half, exactly matching how high the lava column
+    // itself reaches (see caveSafeHeight()) -- the two were deliberately
+    // tied to the same line so "fly above this" reads as one consistent
+    // rule instead of two unrelated numbers.
+    const idx = state.bgLevel % LOCATIONS.length;
+    if (idx === 4) {
+      heightMin = caveSafeHeight();
+      heightMax = Math.max(heightMin + 60, heightMax);
+    } else if (idx === 2 || idx === 3) {
+      heightMin = Math.max(TARGET_HEIGHT_MIN, heightMax * 0.45);
+    }
   }
   state.target.x = state.originX + dist;
-  state.target.y = groundY - (TARGET_HEIGHT_MIN + Math.random() * (heightMax - TARGET_HEIGHT_MIN));
+  state.target.y = groundY - (heightMin + Math.random() * (heightMax - heightMin));
   state.target.r = Math.max(30, 46 - cycle * 4);
 }
 
@@ -812,12 +835,13 @@ function drawWindGust() {
   }
 }
 
-// Caves' lava column: rises from the ground at lavaX while active; only
-// dangerous near the ground (LAVA_HEIGHT), so it reads as a hazard to fly
-// over rather than through, unlike lightning's full-height strike.
+// Caves' lava column: rises from the ground at lavaX up to the screen's
+// vertical middle while active (see caveSafeHeight()), so it reads as a
+// hazard to fly over rather than through, unlike lightning's full-height
+// strike.
 function drawLava() {
   if (!isCaves() || !lavaActive) return;
-  const top = groundY - LAVA_HEIGHT;
+  const top = H * 0.5;
   const grad = ctx.createLinearGradient(0, top, 0, groundY);
   grad.addColorStop(0, 'rgba(255,190,70,0.9)');
   grad.addColorStop(1, 'rgba(255,70,40,0.95)');
