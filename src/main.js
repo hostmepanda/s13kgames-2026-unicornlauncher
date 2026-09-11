@@ -6,13 +6,25 @@ const ctx = cv.getContext('2d');
 let W, H, DPR;
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
-  W = window.innerWidth; H = window.innerHeight;
+  // visualViewport tracks the actually-visible area (shrinks/grows as a
+  // mobile browser's address bar collapses/expands) more reliably than
+  // window.innerWidth/innerHeight, which can be stale right after load and
+  // not fire a matching 'resize' event once the bar settles -- left the
+  // page effectively taller than what was drawn, so fixed UI (HUD/mute
+  // button) and the canvas-drawn minimap ended up positioned against the
+  // wrong height (2026-09-11 user report + screenshot on mobile Chrome).
+  const vv = window.visualViewport;
+  W = vv ? vv.width : window.innerWidth;
+  H = vv ? vv.height : window.innerHeight;
   cv.width = W * DPR; cv.height = H * DPR;
   cv.style.width = W + 'px'; cv.style.height = H + 'px';
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   groundY = H * 0.82;
 }
 window.addEventListener('resize', resize);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resize);
+}
 
 let groundY = 0;
 const G = 1400; // gravity px/s^2

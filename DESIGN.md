@@ -904,3 +904,51 @@ fall back to the original `W*0.22` unchanged (margin only grows, matching
 the existing behavior there). Browser-based viewport resize wasn't
 reliable in this session's automation harness for a pixel-level visual
 check, so this one leaned on the math rather than a screenshot.
+
+## 18. Page scrolled/misaligned on mobile Chrome (2026-09-11)
+
+User screenshot (real mobile Chrome, not this session's desktop-only
+automation harness): the HUD row (including the mute button -- "кнопки
+выключения звука я не вижу") was scrolled off the top of the screen, and
+the canvas-drawn minimap appeared far below the visible ground with a gap
+of blank space in between, instead of pinned to the bottom-right corner.
+
+Root cause is the well-known mobile "100vh + address bar" class of bugs:
+`window.innerHeight`/CSS `vh` units can be measured against a taller
+viewport than what's actually visible once a mobile browser's address bar
+settles (collapses/expands), and unlike a `resize` event, that settling
+doesn't reliably fire one your listener catches at the right moment. Since
+`groundY`, the minimap's position, and the canvas's own pixel dimensions
+are all derived from `H` in `resize()`, a stale/oversized `H` shows up as
+"fixed" UI and canvas content positioned against a height that doesn't
+match what's actually on screen -- exactly the "HUD missing / minimap
+floated down" symptom, not a genuine page scroll (the fixed UI's absolute
+position was correct for the *wrong* height).
+
+Fixes (defense in depth, since this class of bug is finicky across mobile
+browser versions rather than one clean root cause):
+- `resize()` now prefers `window.visualViewport.width/height` over
+  `window.innerWidth/innerHeight` when available -- `visualViewport` is
+  the API specifically designed to track the actually-visible area
+  through on-screen-keyboard and toolbar changes. Also listens on
+  `visualViewport`'s own `resize` event in addition to `window`'s, so a
+  toolbar settling after load re-triggers layout instead of leaving the
+  first (possibly stale) measurement in place.
+- `html,body` changed from `overflow:hidden` alone to
+  `position:fixed; inset:0; width:100%; height:100%` -- a standard lock-
+  the-page-in-place pattern for full-screen mobile web apps, guarding
+  against the page becoming scrollable at all regardless of the exact
+  underlying vh/toolbar mechanism.
+- `#c`'s CSS height gained a `100dvh` fallback alongside the existing
+  `100vh` (later property wins where supported; ignored harmlessly where
+  not) -- `dvh` tracks the current visible viewport directly, unlike
+  `vh`'s "largest possible" semantics on some mobile browsers. This is
+  belt-and-suspenders since `resize()` already sets the canvas's actual
+  display size in px via JS, overriding whichever CSS value applies.
+- QA note: this class of bug is inherently hard to reproduce in this
+  session's desktop-Chrome-only automation harness (no real mobile
+  toolbar-collapse behavior to trigger), so verification here was a
+  desktop sanity check (HUD/hint/minimap still correctly positioned, no
+  regression) plus reasoning from the well-documented nature of the bug
+  class itself -- worth a real-device check on the next round of user
+  feedback.
