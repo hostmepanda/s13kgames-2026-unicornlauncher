@@ -871,3 +871,36 @@ vertical middle.
   visibly shifted upward compared to the old uniform 50-500 range; the
   lava column's rendered height was confirmed to reach the same line via
   a forced-eruption screenshot. Removed before commit.
+
+## 17. Pony anchor too close to the left edge on mobile (2026-09-11)
+
+User: on mobile, pulling the finger back for the slingshot felt cramped --
+the pony sits too close to the left edge, leaving little room to drag.
+
+Root cause: `state.originX = W * 0.22` alone, with no relation to how far
+a full-power pull actually needs to travel (`MAXD = min(W,H) * MAXD_FRAC`,
+`MAXD_FRAC = 0.28`). On a typical mobile portrait viewport (e.g. 390×844),
+`W*0.22` = 85.8px from the left edge, but a full-power straight-back pull
+needs `MAXD` = 109.2px -- the drag target sits *off-screen* before the
+gesture even reaches full power. Wider/shorter viewports (desktop,
+landscape) never hit this since `W*0.22` comfortably exceeds `MAXD` there.
+
+Fix: `state.originX = Math.max(W * 0.22, Math.min(W, H) * (MAXD_FRAC +
+0.06))` -- keeps the original 22% placement wherever it already clears the
+pull radius (unchanged on desktop/landscape), and otherwise pushes the
+anchor right just far enough to guarantee a real margin (a flat +0.06 over
+`MAXD_FRAC`, e.g. ~23px on a 390-wide phone) for a full-power pull in any
+direction, including straight back. `MAXD_FRAC` moved from its previous
+spot (declared right before `computeAim()`, further down the file) up to
+the top-level constants near `G`/`FLAP_IMPULSE`, since `resetLaunch()`
+(called synchronously at module load, before `computeAim()` is ever
+defined) now needs it too -- same TDZ hazard class as the original
+`LOCATIONS` bug earlier in this file's history.
+
+Verified with a plain Node calculation across several real device sizes
+(390×844, 375×667, 430×932, 360×800) confirming a consistent ~21-26px
+margin on all of them, and that desktop/wide sizes (1440×722, 800×600)
+fall back to the original `W*0.22` unchanged (margin only grows, matching
+the existing behavior there). Browser-based viewport resize wasn't
+reliable in this session's automation harness for a pixel-level visual
+check, so this one leaned on the math rather than a screenshot.

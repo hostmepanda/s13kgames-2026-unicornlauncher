@@ -18,6 +18,7 @@ let groundY = 0;
 const G = 1400; // gravity px/s^2
 const FLAP_IMPULSE = 480;
 const MAX_FLAPS = 3;
+const MAXD_FRAC = 0.28; // max aim-drag radius, as a fraction of min(W,H), for 100% power
 
 // Approximate local offset (pre-rotation, pre-scale) from the pony's
 // anchor to its muzzle tip, taken from the muzzle-bump rect in pony.js's
@@ -289,7 +290,13 @@ function updateFirework(dt) {
 function resetLaunch() {
   state.mode = 'aim';
   state.bgLevel = state.level;
-  state.originX = W * 0.22;
+  // On narrow/tall (mobile portrait) viewports, 22% of W alone can sit
+  // closer to the left edge than a full-power straight-back pull needs
+  // (MAXD_FRAC * min(W,H)), leaving no room to actually drag that far
+  // with a thumb (2026-09-11 user report). Push the anchor right enough
+  // to guarantee some margin beyond that pull radius; on wider screens
+  // (where W*0.22 already clears it) this has no effect.
+  state.originX = Math.max(W * 0.22, Math.min(W, H) * (MAXD_FRAC + 0.06));
   state.originY = groundY;
   state.aimActive = false;
   state.aimDX = 0; state.aimDY = 0;
@@ -446,7 +453,6 @@ function aimVectorFrom(e) {
 // that's outside the slingshot's assumed drag direction, the angle read as
 // "stuck" (clamped to the same edge value) instead of tracking the cursor.
 // Power still comes from drag distance either way, unchanged.
-const MAXD_FRAC = 0.28;
 function computeAim(dx, dy, isMouse) {
   const MAXD = Math.min(W, H) * MAXD_FRAC;
   const dist = Math.min(Math.hypot(dx, dy), MAXD);
