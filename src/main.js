@@ -245,14 +245,21 @@ function updateWind(dt) {
 // through Caves dodges it entirely rather than needing to dodge every
 // altitude the way a lightning bolt (sky to ground) does.
 function isCaves() { return state.bgLevel % LOCATIONS.length === 4; }
-const LAVA_ZONE = 55;
-// The lava column reaches all the way up to the screen's vertical middle
-// (2026-09-10 user request: "вулкан должен бить до середины экрана"), and
+// Half-width of the lava column, both for the hit check and the visual
+// rect -- previously these didn't match (a 55px hit zone against an 18px-
+// wide visual), so the hazard was noticeably wider than what it looked
+// like. Unified into one constant, then quadrupled per an explicit request
+// (2026-09-12: "в 4 раза толще") from the *visual* half-width (18px), the
+// more likely reference point for "thicker."
+const LAVA_HALF_W = 18 * 4;
+// The lava column reaches up to 75% of the screen's height (2026-09-12
+// user request, up from the 50%/vertical-middle line set 2026-09-10), and
 // placeTarget() places Caves' clouds no lower than that same line -- "fly
 // above this" is one consistent rule for the whole location, not two
 // unrelated numbers. Height-above-ground, not a screen y, since that's
 // what the hit check and placeTarget both work in.
-function caveSafeHeight() { return groundY - H * 0.5; }
+const CAVE_LAVA_TOP_FRAC = 0.25; // lava's top sits at 25% down from the top of the screen
+function caveSafeHeight() { return groundY - H * CAVE_LAVA_TOP_FRAC; }
 let lavaX = 0, lavaTimer = 1 + Math.random() * 2, lavaActive = false, lavaActiveT = 0;
 
 function updateVolcano(dt) {
@@ -271,7 +278,7 @@ function updateVolcano(dt) {
   }
   if (lavaActive && state.mode === 'flight') {
     const p = state.pony;
-    if (Math.abs(p.x - lavaX) < LAVA_ZONE && p.y > H * 0.5) endFlight(false);
+    if (Math.abs(p.x - lavaX) < LAVA_HALF_W && p.y > H * CAVE_LAVA_TOP_FRAC) endFlight(false);
   }
 }
 
@@ -853,18 +860,18 @@ function drawWindGust() {
   }
 }
 
-// Caves' lava column: rises from the ground at lavaX up to the screen's
-// vertical middle while active (see caveSafeHeight()), so it reads as a
-// hazard to fly over rather than through, unlike lightning's full-height
-// strike.
+// Caves' lava column: rises from the ground at lavaX up to
+// CAVE_LAVA_TOP_FRAC of the screen height while active (see
+// caveSafeHeight()), so it reads as a hazard to fly over rather than
+// through, unlike lightning's full-height strike.
 function drawLava() {
   if (!isCaves() || !lavaActive) return;
-  const top = H * 0.5;
+  const top = H * CAVE_LAVA_TOP_FRAC;
   const grad = ctx.createLinearGradient(0, top, 0, groundY);
   grad.addColorStop(0, 'rgba(255,190,70,0.9)');
   grad.addColorStop(1, 'rgba(255,70,40,0.95)');
   ctx.fillStyle = grad;
-  ctx.fillRect(lavaX - 18, top, 36, groundY - top);
+  ctx.fillRect(lavaX - LAVA_HALF_W, top, LAVA_HALF_W * 2, groundY - top);
 }
 
 // -- location 3: beach (sea swell + palm trees) --

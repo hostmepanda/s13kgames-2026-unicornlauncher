@@ -952,3 +952,27 @@ browser versions rather than one clean root cause):
   regression) plus reasoning from the well-documented nature of the bug
   class itself -- worth a real-device check on the next round of user
   feedback.
+
+## 19. Bigger, taller volcano (2026-09-12)
+
+User: make the Caves lava reach 75% of the screen and 4x thicker.
+
+- `CAVE_LAVA_TOP_FRAC` (new constant, `0.25`) replaces the flat `0.5`
+  (vertical-middle) line from section 16 everywhere it was used
+  (`caveSafeHeight()`, `updateVolcano()`'s hit check, `drawLava()`'s
+  render) -- the lava's top now sits 25% down from the top of the screen,
+  i.e. it fills the bottom 75%, and Caves' clouds (still tied to the same
+  line via `caveSafeHeight()`) are correspondingly squeezed into a smaller
+  top-25% band.
+- `LAVA_HALF_W` (new constant, `18 * 4 = 72`) replaces two previously
+  *different*, never-reconciled numbers: the hit check used a 55px
+  half-width (`LAVA_ZONE`) while the rendered column was only 18px
+  half-width -- the hazard was noticeably wider than what it visually
+  looked like. Unified into one constant used by both, then quadrupled
+  from the visual figure (the more likely reference point for "4x
+  thicker") rather than the mismatched hit-check figure.
+- Verified via a temporary debug hook: a forced eruption screenshot shows
+  the column visibly reaching most of the screen height and clearly
+  thicker than before; sampling `state.target.y` across 15 Caves
+  placements confirmed all of them still landed at or above the new,
+  smaller top-25% line. Removed before commit.
