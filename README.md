@@ -15,8 +15,14 @@ Play: https://hostmepanda.github.io/s13kgames-2026-unicornlauncher/
 - `src/index.html` — HTML shell (head, canvas, HUD markup), with
   `<!--CSS-->`/`<!--JS-->` placeholders the build script fills in
 - `src/style.css` — HUD/page styles
-- `src/main.js` — the whole game (aim/launch/flight/result, scrolling
-  camera, unicorn rendering, heart particles, rainbow trail)
+- `src/main.js` — the game loop and state (aim/launch/flight/result, lap
+  progression, scrolling camera, per-location backgrounds and obstacles,
+  particles, rainbow trail)
+- `src/pony.js` — the unicorn's pixel-art sprite (rect-list + renderer)
+- `src/sound.js` — procedural WebAudio SFX and the background music
+  sequencer, no audio samples
+- `src/grass.js` — a grass-tuft renderer, currently unused (kept for a
+  possible later ground-detail pass, see DESIGN.md)
 - `build/build.mjs` — build script, `dist/` and `*.zip` are build output
   (gitignored)
 
@@ -29,8 +35,11 @@ Play: https://hostmepanda.github.io/s13kgames-2026-unicornlauncher/
 - Viewport meta with `user-scalable=no`
 - One active `pointerId` tracked at a time (protects against multitouch
   conflicts)
-- Canvas resizes based on `devicePixelRatio` (capped at 2x for performance)
-  and on `window.resize`
+- Canvas resizes based on `devicePixelRatio` (capped at 2x for performance);
+  sizing prefers `window.visualViewport` over `innerWidth`/`innerHeight`
+  where available, and listens for both `window` and `visualViewport`
+  resize events, since mobile browsers' address-bar collapse/expand can
+  otherwise leave fixed UI positioned against a stale height
 
 ## Build pipeline
 
